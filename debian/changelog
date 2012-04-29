@@ -1,0 +1,21 @@
+capi-messaging-messages (0.1.0-3) unstable; urgency=low
+
+  * fix messages_search_cb() callback.
+  * Git: slp/api/messages
+  * Tag: capi-messaging-messages_0.1.0-3
+
+ -- WonYoung Choi <wy80.choi@samsung.com>  Thu, 05 Apr 2012 19:00:23 +0900
+
+capi-messaging-messages (0.1.0-2) unstable; urgency=low
+
+  * fix bugs, added DTS.
+  * Git: slp/api/messages
+  * Tag: capi-messaging-messages_0.1.0-2
+
+ -- WonYoung Choi <wy80.choi@samsung.com>  Mon, 02 Apr 2012 17:17:52 +0900
+
+capi-messaging-messages (0.1.0-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- WonYoung Choi <wy80.choi@samsung.com>  Thu, 08 Mar 2012 15:04:37 +0900
