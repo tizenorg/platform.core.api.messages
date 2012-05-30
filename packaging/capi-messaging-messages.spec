@@ -4,6 +4,7 @@ Version: 0.1.0
 Release:    3
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001: packaging/capi-messaging-messages.manifest 
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(glib-2.0)
@@ -30,6 +31,7 @@ Requires:  pkgconfig(capi-base-common)
 
 
 %build
+cp %{SOURCE1001} .
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
 cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
 
@@ -46,9 +48,11 @@ rm -rf %{buildroot}
 
 
 %files
+%manifest capi-messaging-messages.manifest
 %{_libdir}/libcapi-messaging-messages.so.*
 
 %files devel
+%manifest capi-messaging-messages.manifest
 %{_includedir}/messaging/*.h
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/libcapi-messaging-messages.so
