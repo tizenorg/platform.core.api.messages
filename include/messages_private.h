@@ -23,26 +23,29 @@ extern "C"
 #endif
 
 typedef struct _messages_service_s {
-	MSG_HANDLE_T service_h;
-	void*        sent_cb;
-	void*        sent_cb_user_data;
-	bool         sent_cb_enabled;
+	msg_handle_t service_h;
 	void*        incoming_cb;
 	void*        incoming_cb_user_data;
 	bool         incoming_cb_enabled;
+	GSList*      sent_cb_list;
 } messages_service_s;
 
 typedef struct _messages_message_s {
-	msg_message_t msg_h;	
-	char *text;
-	GSList *attachment_list;
+	msg_struct_t  msg_h;	
+	char*         text;
+	GSList*       attachment_list;
 } messages_message_s;
 
 typedef struct _messages_attachment_s {
-    int media_type;
-    char filepath[MSG_FILEPATH_LEN_MAX];
+    int           media_type;
+    char          filepath[MSG_FILEPATH_LEN_MAX];
 } messages_attachment_s;
 
+typedef struct _messages_sent_callback_s {
+	int               req_id;
+	void*             callback;
+	void*             user_data;
+} messages_sent_callback_s;
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,8 @@
 
 #include <messages.h>
 
+#define TEST_NUMBER "00000000000"
+
 void _sent_cb(messages_sending_result_e result, void *user_data)
 {
 }
@@ -28,18 +30,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	messages_add_address(msg, "3488858734");
+	messages_add_address(msg, TEST_NUMBER, MESSAGES_RECIPIENT_TO);
 	messages_set_text(msg, "This is simple message!");
 	
-
 	// send message
-	ret = messages_set_message_sent_cb(svc, _sent_cb, NULL);
-	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_set_message_sent_cb() = %d", ret);
-		return 1;
-	}
-
-	ret = messages_send_message(svc, msg);
+	ret = messages_send_message(svc, msg, true, _sent_cb, NULL);
 	if (MESSAGES_ERROR_NONE != ret) {
 		printf("error: messages_send_message() = %d", ret);
 		return 1;

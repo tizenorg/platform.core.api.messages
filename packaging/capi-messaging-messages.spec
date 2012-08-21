@@ -1,7 +1,7 @@
 Name:       capi-messaging-messages
 Summary:    A SMS/MMS library in Tizen Native API
 Version: 0.1.0
-Release:    3
+Release:    11
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 BuildRequires:  cmake
@@ -31,13 +31,16 @@ Requires:  pkgconfig(capi-base-common)
 
 %build
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
-cmake . -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
+rm -fr cmake_build_tmp; mkdir cmake_build_tmp
+cd cmake_build_tmp
+cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
 
 
 make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}
+cd cmake_build_tmp
 %make_install
 
 %post -p /sbin/ldconfig

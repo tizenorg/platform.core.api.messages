@@ -26,7 +26,7 @@ extern "C"
 
 
 /**
- * @addtogroup TIZEN_MESSAGING_MODULE
+ * @addtogroup CAPI_MESSAGING_MESSAGES_MODULE
  * @{
  */
 
@@ -42,7 +42,7 @@ typedef enum {
 	MESSAGES_ERROR_COMMUNICATION_WITH_SERVER_FAILED = TIZEN_ERROR_MESSAGING_CLASS|0x502, /**< Communication with server failed */
 	MESSAGES_ERROR_SENDING_FAILED = TIZEN_ERROR_MESSAGING_CLASS|0x504, /**< Sending a message failed */
 	MESSAGES_ERROR_OPERATION_FAILED = TIZEN_ERROR_MESSAGING_CLASS|0x505, /**< Messaging operation failed */
-} MESSAGES_error_e;
+} messages_error_e;
 
 /**
  * @}

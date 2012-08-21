@@ -14,24 +14,23 @@
  * limitations under the License. 
  */
 
-#include <memory.h>
-
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <memory.h>
 
 #include <glib.h>
 
 #include <dlog.h>
-#include <MapiMessage.h>
-#include <MapiTransport.h>
-#include <MapiStorage.h>
-#include <MapiControl.h>
-#include <MsgTypes.h>
+#include <msg.h>
+#include <msg_transport.h>
+#include <msg_storage.h>
 
 #include <messages.h>
 #include <messages_types.h>
 #include <messages_private.h>
-
 
 #ifdef LOG_TAG
 #undef LOG_TAG
@@ -45,11 +44,14 @@
 int _messages_error_converter(int err, const char *func, int line);
 int _messages_get_media_type_from_filepath(const char *filepath);
 int _messages_save_mms_data(messages_message_s *msg);
-int _messages_load_mms_data(messages_message_s *msg, MSG_HANDLE_T handle);
+int _messages_load_mms_data(messages_message_s *msg, msg_handle_t handle);
 int _messages_save_textfile(const char *text, char **filepath);
 int _messages_load_textfile(const char *filepath, char **text);
-MSG_FOLDER_ID_T _messages_convert_mbox_to_fw(messages_message_box_e mbox);
-MSG_MESSAGE_TYPE_T _messages_convert_msgtype_to_fw(messages_message_type_e type);
+void _messages_sent_mediator_cb(msg_handle_t handle, msg_struct_t pStatus, void *user_param);
+
+int _messages_convert_mbox_to_fw(messages_message_box_e mbox);
+int _messages_convert_msgtype_to_fw(messages_message_type_e type);
+int _messages_convert_recipient_to_fw(messages_recipient_type_e type);
 
 
 #define ERROR_CONVERT(err) _messages_error_converter(err, __FUNCTION__, __LINE__);
@@ -59,10 +61,6 @@ MSG_MESSAGE_TYPE_T _messages_convert_msgtype_to_fw(messages_message_type_e type)
 			__FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER, #p); \
 		return MESSAGES_ERROR_INVALID_PARAMETER; \
 	}	
-
-
-
-
 
 int messages_open_service(messages_service_h *svc)
 {
@@ -79,22 +77,40 @@ int messages_open_service(messages_service_h *svc)
 		return MESSAGES_ERROR_OUT_OF_MEMORY;
 	}
 
-	_svc->sent_cb = NULL;
-	_svc->sent_cb_user_data = NULL;
-	_svc->sent_cb_enabled = false;
+	_svc->sent_cb_list = NULL;
+	_svc->incoming_cb = NULL;
+	_svc->incoming_cb_enabled = false;
 
 	ret = msg_open_msg_handle(&_svc->service_h);
+	if (MSG_SUCCESS != ret) {
+		free(_svc);
+		return ERROR_CONVERT(ret);
+	}
+	
+	ret = msg_reg_sent_status_callback(_svc->service_h, &_messages_sent_mediator_cb, (void*)_svc);
+	if (MSG_SUCCESS != ret) {
+		free(_svc);
+		return ERROR_CONVERT(ret);
+	}	
 
 	*svc = (messages_service_h)_svc;
 
-	return ERROR_CONVERT(ret);
+	return MESSAGES_ERROR_NONE;
 }
 
 int messages_close_service(messages_service_h svc)
 {
 	int ret;
+	
+	messages_service_s *_svc = (messages_service_s *)svc;
 
-	ret = msg_close_msg_handle(&((messages_service_s*)svc)->service_h);
+	ret = msg_close_msg_handle(&_svc->service_h);
+	
+	if (_svc->sent_cb_list) {	
+		g_slist_foreach(_svc->sent_cb_list, (GFunc)g_free, NULL);
+		g_slist_free(_svc->sent_cb_list);
+		_svc->sent_cb_list = NULL;
+	}
 
 	free(svc);
 
@@ -116,7 +132,7 @@ int messages_create_message(messages_message_type_e type, messages_message_h *ms
 		return MESSAGES_ERROR_OUT_OF_MEMORY;
 	}
 	
-	_msg->msg_h = msg_new_message();
+	_msg->msg_h = msg_create_struct(MSG_STRUCT_MESSAGE_INFO);
 	if (NULL == _msg->msg_h)
 	{
 		LOGE("[%s] OUT_OF_MEMORY(0x%08x) fail to create '_msg->msg_h'."
@@ -130,20 +146,20 @@ int messages_create_message(messages_message_type_e type, messages_message_h *ms
 
 	if (MESSAGES_TYPE_SMS == type)
 	{
-		ret = ERROR_CONVERT(msg_set_message_type(_msg->msg_h, MSG_TYPE_SMS));
+		ret = ERROR_CONVERT(msg_set_int_value(_msg->msg_h, MSG_MESSAGE_TYPE_INT, MSG_TYPE_SMS));
 		if (MESSAGES_ERROR_NONE != ret)
 		{
-			msg_release_message(&_msg->msg_h);
+			msg_release_struct(&_msg->msg_h);
 			free(_msg);
 			return ret;
 		}
 	}
 	else if (MESSAGES_TYPE_MMS == type)
 	{
-		ret = ERROR_CONVERT(msg_set_message_type(_msg->msg_h, MSG_TYPE_MMS));
+		ret = ERROR_CONVERT(msg_set_int_value(_msg->msg_h, MSG_MESSAGE_TYPE_INT, MSG_TYPE_MMS));
 		if (MESSAGES_ERROR_NONE != ret)
 		{
-			msg_release_message(&_msg->msg_h);
+			msg_release_struct(&_msg->msg_h);
 			free(_msg);
 			return ret;
 		}				
@@ -152,7 +168,7 @@ int messages_create_message(messages_message_type_e type, messages_message_h *ms
 	{
 		LOGE("[%s] INVALID_PARAMETER(0x%08x) : the message type is unknown."
 			, __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
-		msg_release_message(&_msg->msg_h);
+		msg_release_struct(&_msg->msg_h);
 		free(_msg);
 		return MESSAGES_ERROR_INVALID_PARAMETER;
 	}
@@ -177,7 +193,7 @@ int messages_destroy_message(messages_message_h msg)
 		_msg->text = NULL;
 	}
 
-	ret = msg_release_message(&_msg->msg_h);
+	ret = msg_release_struct(&_msg->msg_h);
 
 	free(msg);
 
@@ -187,13 +203,18 @@ int messages_destroy_message(messages_message_h msg)
 int messages_get_message_type(messages_message_h msg, messages_message_type_e *type)
 {
 	int msgType;
+	int ret;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 	CHECK_NULL(type);
-
-	msgType = msg_get_message_type(_msg->msg_h);
+	
+	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_TYPE_INT, &msgType);
+	if (ret != MSG_SUCCESS)
+	{
+		return ERROR_CONVERT(ret);
+	}
 
 	switch (msgType)
 	{
@@ -219,46 +240,107 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e *t
 	return MESSAGES_ERROR_NONE;
 }
 
-int messages_add_address(messages_message_h msg, const char *address)
+int messages_add_address(messages_message_h msg, const char *address, messages_recipient_type_e type)
 {
 	int ret;
 
+	int msgType;
+	msg_struct_list_s *addr_list = NULL;
+	msg_struct_t addr_info;
+	
 	messages_message_s *_msg = (messages_message_s*)msg;
 	
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 	CHECK_NULL(address);
+	
+	msg_get_int_value(_msg->msg_h, MSG_MESSAGE_TYPE_INT, (int *)&msgType);
+	
+	ret = msg_get_list_handle(_msg->msg_h, MSG_MESSAGE_ADDR_LIST_STRUCT, (void **)&addr_list);
+	if (MSG_SUCCESS != ret) {
+		return ERROR_CONVERT(ret);
+	}
+	
+	addr_info = addr_list->msg_struct_info[addr_list->nCount];
+	
+	if (MSG_TYPE_SMS == msgType)
+	{
+		msg_set_int_value(addr_info, MSG_ADDRESS_INFO_RECIPIENT_TYPE_INT, MSG_RECIPIENTS_TYPE_TO);
+	}
+	else if (MSG_TYPE_MMS == msgType)
+	{
+		msg_set_int_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_TYPE_INT, MSG_ADDRESS_TYPE_PLMN);
+		msg_set_int_value(addr_info, MSG_ADDRESS_INFO_RECIPIENT_TYPE_INT, _messages_convert_recipient_to_fw(type));
+	}
+	else
+	{
+		LOGE("[%s] INVALID_PARAMETER(0x%08x) : the message type is unknown."
+			, __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
+		return MESSAGES_ERROR_INVALID_PARAMETER;
+	}
 
-	ret = msg_add_address(_msg->msg_h, address, MSG_RECIPIENTS_TYPE_TO);
+	ret = msg_set_str_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_VALUE_STR, (char *)address, strlen(address));
+	if (MSG_SUCCESS != ret) {
+		return ERROR_CONVERT(ret);
+	}
+	
+	addr_list->nCount++;
 
-	return ERROR_CONVERT(ret);
+	return MESSAGES_ERROR_NONE;
 }
 
 int messages_get_address_count(messages_message_h msg, int *count)
 {
+	int ret;
+	msg_struct_list_s *addr_list = NULL;
+	
 	messages_message_s *_msg = (messages_message_s*)msg;
 
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 	CHECK_NULL(count);
+	
+	ret = msg_get_list_handle(_msg->msg_h, MSG_MESSAGE_ADDR_LIST_STRUCT, (void **)&addr_list);
+	if (MSG_SUCCESS != ret) {
+		return ERROR_CONVERT(ret);
+	}
 
-	*count = msg_get_address_count(_msg->msg_h);
+	*count = addr_list->nCount;
 
 	return MESSAGES_ERROR_NONE;
 }
 
-int messages_get_address(messages_message_h msg, int index, char **address)
+int messages_get_address(messages_message_h msg, int index, char **address, messages_recipient_type_e *type)
 {
-	const char *_address;
+	int ret;
+	char _address[MAX_ADDRESS_VAL_LEN] = {0, };
+	int _type;
+	
+	msg_struct_list_s *addr_list = NULL;
+	msg_struct_t addr_info;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
 
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 	CHECK_NULL(address);
-
-	_address = msg_get_ith_address(_msg->msg_h, index);
-	if (NULL == _address)
+	
+	ret = msg_get_list_handle(_msg->msg_h, MSG_MESSAGE_ADDR_LIST_STRUCT, (void **)&addr_list);
+	if (MSG_SUCCESS != ret) {
+		return ERROR_CONVERT(ret);
+	}
+	
+	if (index > addr_list->nCount)
+	{
+		LOGE("[%s] INVALID_PARAMETER(0x%08x) : index(%d) > addr_list->nCount(%d) "
+			, __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER, index, addr_list->nCount);
+		return MESSAGES_ERROR_INVALID_PARAMETER;
+	}
+	
+	addr_info = addr_list->msg_struct_info[index];
+	
+	ret = msg_get_str_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_VALUE_STR, _address, MAX_ADDRESS_VAL_LEN);
+	if (MSG_SUCCESS != ret)
 	{
 		*address = NULL;
 	}
@@ -273,96 +355,96 @@ int messages_get_address(messages_message_h msg, int index, char **address)
 		}
 	}
 
+	if (NULL != type)
+	{	
+		ret = msg_get_int_value(addr_info, MSG_ADDRESS_INFO_RECIPIENT_TYPE_INT, &_type);
+		if (MSG_SUCCESS != ret)
+		{
+			*type = MESSAGES_RECIPIENT_UNKNOWN;
+		}
+		else
+		{
+			switch (_type) {
+				case MSG_RECIPIENTS_TYPE_TO:
+					*type = MESSAGES_RECIPIENT_TO;
+					break;
+				case MSG_RECIPIENTS_TYPE_CC:
+					*type = MESSAGES_RECIPIENT_CC;
+					break;
+				case MSG_RECIPIENTS_TYPE_BCC:
+					*type = MESSAGES_RECIPIENT_BCC;
+					break;
+				default:
+					*type = MESSAGES_RECIPIENT_UNKNOWN;
+					break;	
+			}
+		}
+	}
+
 	return MESSAGES_ERROR_NONE;
 }
 
 int messages_remove_all_addresses(messages_message_h msg)
 {
 	int ret;
+	msg_struct_list_s *addr_list = NULL;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
 
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 
-	ret = msg_reset_address(_msg->msg_h);
+	ret = msg_get_list_handle(_msg->msg_h, MSG_MESSAGE_ADDR_LIST_STRUCT, (void **)&addr_list);
+	if (MSG_SUCCESS != ret)
+	{
+		addr_list->nCount = 0;
+	}
 
 	return ERROR_CONVERT(ret);
 }
 
 void _dump_message(messages_message_h msg)
 {
-	int ret;
-	//messages_message_s *_msg = (messages_message_s*)msg;
-	
-	messages_message_type_e msgType;
-	char *buf;
-	int i, count;
-
-
-	
-	LOGD("=======================================================");
-	// type
-	ret = messages_get_message_type(msg, &msgType);
-	if (MESSAGES_ERROR_NONE == ret) {
-		switch(msgType) {
-			case MESSAGES_TYPE_SMS: LOGD("Type: SMS"); break;
-			case MESSAGES_TYPE_MMS: LOGD("Type: MMS"); break;
-			default: LOGD("Type: Unknown (%d)", msgType); break;
-		}
-	} else {
-		LOGD("Type: Err (%d)", ret);
-	}
-
-	// text
-	ret = messages_get_text(msg, &buf);	
-	if (MESSAGES_ERROR_NONE == ret) {
-		LOGD("Text: %s", buf);
-		free(buf);
-	} else {
-		LOGD("Text: Err (%d)", ret);
-	}
-
-	// address
-	ret = messages_get_address_count(msg, &count);
-	if (MESSAGES_ERROR_NONE == ret) {
-		LOGD("Address_Count: %d", count);
-		for (i=0; i < count; i++) {
-			ret = messages_get_address(msg, i, &buf);
-			if (MESSAGES_ERROR_NONE == ret) {
-				LOGD("Address[%d]: %s", i, buf);
-				free(buf);
-			} else {
-				LOGD("Address[%d]: Err (%d)", ret);
-			}
-		}		
-	} else {
-		LOGD("Address Count: Err (%d)", ret);
-	}
 
 }
 
-int messages_send_message(messages_service_h svc, messages_message_h msg)
+int messages_send_message(messages_service_h svc, messages_message_h msg, bool save_to_sentbox,
+							messages_sent_cb callback, void *user_data)
 {
 	int ret;
-	MSG_REQUEST_S req = {0};
+	int reqId;
+	msg_struct_t req;
+	msg_struct_t sendOpt;
+	msg_struct_t option = NULL;
 	messages_message_type_e msgType;
 
 	messages_service_s *_svc = (messages_service_s*)svc;
 	messages_message_s *_msg = (messages_message_s*)msg;
+	
+	messages_sent_callback_s *_cb;
 
 	CHECK_NULL(_svc);
 	CHECK_NULL(_svc->service_h);
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 
-	req.msg = (msg_message_t)_msg->msg_h;
+
+	sendOpt = msg_create_struct(MSG_STRUCT_SENDOPT);
+	msg_set_bool_value(sendOpt, MSG_SEND_OPT_SETTING_BOOL, true);
+	msg_set_bool_value(sendOpt, MSG_SEND_OPT_DELIVER_REQ_BOOL, false);
+	msg_set_bool_value(sendOpt, MSG_SEND_OPT_KEEPCOPY_BOOL, save_to_sentbox);	
 
 	messages_get_message_type(msg, &msgType);
 
 	if (MESSAGES_TYPE_SMS == msgType)
-	{
-		ret = msg_sms_send_message(_svc->service_h, &req);
+	{	
+		req = msg_create_struct(MSG_STRUCT_REQUEST_INFO);
+		msg_set_struct_handle(req, MSG_REQUEST_MESSAGE_HND, _msg->msg_h);
+		msg_set_struct_handle(req, MSG_REQUEST_SENDOPT_HND, sendOpt);	
+		
+		ret = msg_sms_send_message(_svc->service_h, req);
+		
+		msg_release_struct(&req);
 	}
 	else if (MESSAGES_TYPE_MMS == msgType)
 	{
@@ -373,20 +455,238 @@ int messages_send_message(messages_service_h svc, messages_message_h msg)
 			{
 				_dump_message(msg);
 			}
-			ret = msg_mms_send_message(_svc->service_h, &req);
+		
+			req = msg_create_struct(MSG_STRUCT_REQUEST_INFO);
+			msg_set_struct_handle(req, MSG_REQUEST_MESSAGE_HND, _msg->msg_h);
+			msg_set_struct_handle(req, MSG_REQUEST_SENDOPT_HND, sendOpt);	
+		
+			msg_get_struct_handle(sendOpt, MSG_SEND_OPT_MMS_OPT_HND, &option);
+			msg_set_bool_value(option, MSG_MMS_SENDOPTION_READ_REQUEST_BOOL, false);
+			msg_set_int_value(option, MSG_MMS_SENDOPTION_PRIORITY_INT, MSG_MESSAGE_PRIORITY_NORMAL);
+			msg_set_int_value(option, MSG_MMS_SENDOPTION_EXPIRY_TIME_INT, MSG_EXPIRY_TIME_MAXIMUM);
+			msg_set_int_value(option, MSG_MMS_SENDOPTION_DELIVERY_TIME_INT, MSG_DELIVERY_TIME_IMMEDIATLY);			
+			
+			ret = msg_mms_send_message(_svc->service_h, req);
+			
+			msg_release_struct(&req);
 		}
 	}
 	else
 	{
 		LOGE("[%s] INVALID_PARAMETER(0x%08x) : Invalid Message Type.", 
-				__FUNCTION__, TIZEN_ERROR_INVALID_PARAMETER);
+				__FUNCTION__, TIZEN_ERROR_INVALID_PARAMETER);		
 		return TIZEN_ERROR_INVALID_PARAMETER;
+	}
+	
+	msg_release_struct(&sendOpt);
+	
+	if (NULL != callback && MSG_SUCCESS == ret)
+	{
+		// Add callback to mapping table
+		_cb = (messages_sent_callback_s *)malloc(sizeof(messages_sent_callback_s));
+		if (NULL != _cb) {
+			msg_get_int_value(req, MSG_REQUEST_REQUESTID_INT, &reqId);
+			_cb->req_id = reqId;
+			_cb->callback = (void *)callback;
+			_cb->user_data = user_data;
+			
+			_svc->sent_cb_list = g_slist_append(_svc->sent_cb_list, _cb);
+		}
 	}
 
 	return ERROR_CONVERT(ret);
 }
 
-int messages_foreach_message_from_db(messages_service_h svc,
+int messages_get_message_count(messages_service_h service, 
+							messages_message_box_e mbox, messages_message_type_e type,
+							int *count)
+{
+	int ret;
+	msg_folder_id_t folderId;
+	msg_struct_t countInfo = NULL;
+	int nSms, nMms;
+	
+	messages_service_s *_svc = (messages_service_s*)service;
+	
+	CHECK_NULL(_svc);
+	CHECK_NULL(count);
+	
+	nSms = 0;
+	nMms = 0;
+	
+	if (MESSAGES_MBOX_ALL == mbox)
+	{
+		if (MESSAGES_TYPE_SMS == type || MESSAGES_TYPE_UNKNOWN == type)
+		{
+			ret = ERROR_CONVERT(msg_count_msg_by_type(_svc->service_h, MSG_TYPE_SMS, &nSms));
+			if (MESSAGES_ERROR_NONE != ret)
+			{
+				return ret;
+			}
+		}
+
+		if (MESSAGES_TYPE_MMS == type || MESSAGES_TYPE_UNKNOWN == type)
+		{
+			ret = ERROR_CONVERT(msg_count_msg_by_type(_svc->service_h, MSG_TYPE_MMS, &nMms));
+			if (MESSAGES_ERROR_NONE != ret)
+			{
+				return ret;
+			}
+		}
+
+		*count = nSms + nMms;
+	}
+	else
+	{
+		countInfo = msg_create_struct(MSG_STRUCT_COUNT_INFO);
+		folderId = _messages_convert_mbox_to_fw(mbox);
+		ret = ERROR_CONVERT(msg_count_message(_svc->service_h, folderId, countInfo));
+		if (MESSAGES_ERROR_NONE != ret)
+		{
+			return ret;
+		}
+		
+		msg_get_int_value(countInfo, MSG_COUNT_INFO_SMS_INT, &nSms);
+		msg_get_int_value(countInfo, MSG_COUNT_INFO_MMS_INT, &nMms);
+
+		msg_release_struct(&countInfo);
+
+		switch (type)
+		{
+		case MESSAGES_TYPE_SMS:	*count = nSms; break;
+		case MESSAGES_TYPE_MMS: *count = nMms; break;
+		case MESSAGES_TYPE_UNKNOWN: *count = nSms + nMms; break;
+		default: *count = 0; break;
+		}
+	}
+	
+	return MESSAGES_ERROR_NONE;
+}
+
+int messages_search_message(messages_service_h service,
+							messages_message_box_e mbox,
+							messages_message_type_e type,
+							const char *keyword, const char *address,
+							int offset, int limit,
+							messages_message_h **message_array, int *length, int *total)
+{
+	int i;
+	int ret;
+
+	msg_struct_list_s msg_list;
+	msg_struct_t searchCon;
+	messages_message_type_e _msgType;
+	
+	messages_service_s *_svc = (messages_service_s*)service;
+	messages_message_s *_msg = NULL;
+	messages_message_h *_array;
+	
+
+	CHECK_NULL(_svc);
+	CHECK_NULL(message_array);
+	
+	// Set Condition
+	searchCon = msg_create_struct(MSG_STRUCT_SEARCH_CONDITION);
+	msg_set_int_value(searchCon, MSG_SEARCH_CONDITION_FOLDERID_INT, _messages_convert_mbox_to_fw(mbox));
+	msg_set_int_value(searchCon, MSG_SEARCH_CONDITION_MSGTYPE_INT, _messages_convert_msgtype_to_fw(type));
+	if (NULL != keyword)
+	{
+		msg_set_str_value(searchCon, MSG_SEARCH_CONDITION_SEARCH_VALUE_STR, strdup(keyword), sizeof(keyword));
+	}
+	if (NULL != address)
+	{
+		msg_set_str_value(searchCon, MSG_SEARCH_CONDITION_ADDRESS_VALUE_STR, strdup(address), sizeof(address));
+	}
+
+	// Search
+	ret = msg_search_message(_svc->service_h, searchCon, offset, limit, &msg_list);
+	if (MSG_SUCCESS != ret)
+	{
+		msg_release_struct(&searchCon);
+		return ERROR_CONVERT(ret);
+	}
+	msg_release_struct(&searchCon);
+
+	// Result
+	_array = (messages_message_h*)calloc(msg_list.nCount + 1, sizeof(messages_message_h));
+	if (NULL == _array)
+	{
+		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_array'."
+			, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+		return MESSAGES_ERROR_OUT_OF_MEMORY;
+	}
+	
+	for (i=0; i < msg_list.nCount; i++)
+	{
+		_msg = (messages_message_s*)calloc(1, sizeof(messages_message_s));
+		_msg->text = NULL;
+		_msg->attachment_list = NULL;
+		if (NULL == _msg)
+		{
+			LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_msg'."
+				, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);			
+			free(_array);
+			return MESSAGES_ERROR_OUT_OF_MEMORY;
+		}
+
+		_msg->msg_h = msg_list.msg_struct_info[i];
+		
+		messages_get_message_type((messages_message_h)_msg, &_msgType);
+
+		if (MESSAGES_TYPE_MMS == _msgType)
+		{
+			// TODO: Well... performance issue.
+			// Shoud I load mms data at here?
+			_messages_load_mms_data(_msg, _svc->service_h);
+		}
+		
+		_array[i] = (messages_message_h)_msg;
+	}
+	
+	*message_array = (messages_message_h*)_array;
+	
+	if (NULL != length)
+	{
+		*length = msg_list.nCount;
+	}
+	
+	if (NULL != total)
+	{
+		*total = -1; // TODO: total count is not supported yet.
+	}
+	
+	// TODO: where should I free msg_list?
+	
+
+	return MESSAGES_ERROR_NONE;
+}
+
+int messages_free_message_array(messages_message_h *message_array)
+{
+	int ret;
+	int i=0;
+
+	messages_message_h* _array = (messages_message_h*)message_array;
+	CHECK_NULL(_array);
+	
+	while (_array[i] != NULL)
+	{
+		ret = messages_destroy_message(_array[i]);
+		if (MESSAGES_ERROR_NONE != ret)
+		{
+			LOGW("[%s:%d] messages_destroy_message() is fail. ret = %d"
+				, __FUNCTION__, __LINE__, ret);
+		}
+		
+		i++;
+	}
+	
+	free(message_array);
+	
+	return MESSAGES_ERROR_NONE;
+}
+
+int messages_foreach_message(messages_service_h svc,
 							 messages_message_box_e mbox,
 							 messages_message_type_e type,
 							 const char *keyword, const char *address,
@@ -397,125 +697,67 @@ int messages_foreach_message_from_db(messages_service_h svc,
 	int ret;
 	bool ret_cb;
 
-	MSG_LIST_S msg_list;
-	MSG_SEARCH_CONDITION_S searchCon;
-	messages_message_type_e _msgType;
+	messages_message_h* msg_array;
+	int length;
+	int total;
 	
-	messages_service_s *_svc = (messages_service_s*)svc;
-	messages_message_s *_msg = NULL;
-
-	CHECK_NULL(_svc);
-	CHECK_NULL(callback);
-
-	// Set Condition
-	searchCon.folderId = _messages_convert_mbox_to_fw(mbox);
-	searchCon.msgType = _messages_convert_msgtype_to_fw(type);	
-	searchCon.pSearchVal = NULL == keyword ? NULL : strdup(keyword);
-	searchCon.pAddressVal = NULL == address ? NULL : strdup(address);
-
-	ret = msg_search_message(_svc->service_h, &searchCon, offset, limit, &msg_list);
-	if (MSG_SUCCESS != ret)
+	ret = messages_search_message(svc, mbox, type, keyword, address, offset, limit,
+								&msg_array, &length, &total);
+	if (MESSAGES_ERROR_NONE != ret)
 	{
-		return ERROR_CONVERT(ret);
+		return ret;			
 	}
-
-	for (i=0; i < msg_list.nCount; i++)
+	
+	for (i=0; i < length; i++)
 	{
-		_msg = (messages_message_s*)calloc(1, sizeof(messages_message_s));
-		_msg->text = NULL;
-		_msg->attachment_list = NULL;
-		if (NULL == _msg)
-		{
-			LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_msg'."
-				, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
-			return MESSAGES_ERROR_OUT_OF_MEMORY;
-		}
-
-		_msg->msg_h = msg_list.msgInfo[i];
-
-		messages_get_message_type((messages_message_h)_msg, &_msgType);
-
-		if (MESSAGES_TYPE_MMS == _msgType)
-		{
-			// TODO: Well... performance issue.
-			// Shoud I load mms data at here?
-			_messages_load_mms_data(_msg, _svc->service_h);
-		}
-
-		// do callback
-		// TODO: total count is not supported yet.
-		ret_cb = callback((messages_message_h)_msg, i, msg_list.nCount, -1, user_data);
-
-		messages_mms_remove_all_attachments((messages_message_h)_msg);
-		msg_release_message(&_msg->msg_h);
-		free(_msg);
-
-		if (false == ret_cb)
-		{
-			break;
-		}
+		ret_cb = callback((messages_message_h)msg_array[i], i, length, total, user_data);
 	}
-
+	
+	ret = messages_free_message_array(msg_array);
+	if (MESSAGES_ERROR_NONE != ret)
+	{
+		return ret;			
+	}
+	
 	return MESSAGES_ERROR_NONE;
 }
 
-void _messages_sent_mediator_cb(MSG_HANDLE_T handle, MSG_SENT_STATUS_S *pStatus, void *user_param)
+void _messages_sent_mediator_cb(msg_handle_t handle, msg_struct_t pStatus, void *user_param)
 {
 	messages_sending_result_e ret;
 	messages_service_s *_svc = (messages_service_s*)user_param;
+
+	int i;
+	int status = MSG_NETWORK_SEND_FAIL;
+	int reqId = 0;
+	messages_sent_callback_s *_cb;
+
+	msg_get_int_value(pStatus, MSG_SENT_STATUS_REQUESTID_INT, &reqId);
+	msg_get_int_value(pStatus, MSG_SENT_STATUS_NETWORK_STATUS_INT, &status);
 
 	if (NULL == _svc)
 	{
 		return;
 	}
 
-	if (_svc->sent_cb_enabled && _svc->sent_cb != NULL)
+	for (i=0; i < g_slist_length(_svc->sent_cb_list); i++)
 	{
-		ret = (pStatus->status == MSG_NETWORK_SEND_SUCCESS) ? 
-					MESSAGES_SENDING_SUCCEEDED : MESSAGES_SENDING_FAILED;
-		((messages_sent_cb)_svc->sent_cb)(ret, _svc->sent_cb_user_data);	
-	}
-}
-
-int messages_set_message_sent_cb(messages_service_h svc, messages_sent_cb callback, void *user_data)
-{
-	int ret;
-
-	messages_service_s *_svc = (messages_service_s*)svc;
-
-	CHECK_NULL(_svc);
-	CHECK_NULL(callback);
-
-	if (NULL == _svc->sent_cb)
-	{
-		ret = ERROR_CONVERT(
-				msg_reg_sent_status_callback(_svc->service_h, &_messages_sent_mediator_cb, (void*)_svc)
-			);
-		if (MESSAGES_ERROR_NONE != ret)
+		_cb = (messages_sent_callback_s *)g_slist_nth_data(_svc->sent_cb_list, i);
+		
+		if (NULL != _cb && _cb->req_id == reqId)
 		{
-			return ret;
+			ret = (status == MSG_NETWORK_SEND_SUCCESS) ? 
+					MESSAGES_SENDING_SUCCEEDED : MESSAGES_SENDING_FAILED;
+
+			((messages_sent_cb)_cb->callback)(ret, _cb->user_data);
+			_svc->sent_cb_list = g_slist_remove(_svc->sent_cb_list, _cb);
+			free(_cb);
+			break;
 		}
 	}
-
-	_svc->sent_cb = (void*)callback;
-	_svc->sent_cb_user_data = (void*)user_data;
-	_svc->sent_cb_enabled = true;
-	
-	return MESSAGES_ERROR_NONE;
 }
 
-int messages_unset_message_sent_cb(messages_service_h svc)
-{
-	messages_service_s *_svc = (messages_service_s*)svc;
-
-	CHECK_NULL(_svc);
-
-	_svc->sent_cb_enabled = false;
-
-	return MESSAGES_ERROR_NONE;
-}
-
-void _messages_incoming_mediator_cb(MSG_HANDLE_T handle, msg_message_t msg, void *user_param)
+void _messages_incoming_mediator_cb(msg_handle_t handle, msg_struct_t msg, void *user_param)
 {
 	messages_message_type_e msgType;
 	messages_message_s *_msg;
@@ -586,6 +828,29 @@ int messages_set_message_incoming_cb(messages_service_h svc, messages_incoming_c
 	return MESSAGES_ERROR_NONE;
 }
 
+int messages_add_sms_listening_port(messages_service_h service, int port)
+{
+	int ret;
+	messages_service_s *_svc = (messages_service_s*)service;
+	CHECK_NULL(_svc);
+	
+	if (port <= 0)
+	{
+		return MESSAGES_ERROR_INVALID_PARAMETER;
+	}
+	
+	ret = ERROR_CONVERT(
+			msg_reg_sms_message_callback(_svc->service_h, &_messages_incoming_mediator_cb, port, (void*)_svc)
+		);
+		
+	if (MESSAGES_ERROR_NONE != ret)
+	{
+		return ret;
+	}
+	
+	return MESSAGES_ERROR_NONE;
+}
+
 int messages_unset_message_incoming_cb(messages_service_h svc)
 {
 	messages_service_s *_svc = (messages_service_s*)svc;
@@ -596,6 +861,27 @@ int messages_unset_message_incoming_cb(messages_service_h svc)
 
 	return MESSAGES_ERROR_NONE;
 }
+
+int messages_get_message_port(messages_message_h msg, int *port)
+{
+	int ret;
+	int _port;
+	
+	messages_message_s *_msg = (messages_message_s*)msg;
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+	CHECK_NULL(port);
+	
+	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_DEST_PORT_INT, &_port);
+	if (MSG_SUCCESS != ret) {
+		return ERROR_CONVERT(ret);
+	}
+	
+	*port = _port;
+	
+	return MESSAGES_ERROR_NONE;
+}
+
 
 int messages_set_text(messages_message_h msg, const char *text)
 {
@@ -622,9 +908,7 @@ int messages_set_text(messages_message_h msg, const char *text)
 				, __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
 			return MESSAGES_ERROR_INVALID_PARAMETER;
 		}
-		ret = ERROR_CONVERT(
-				msg_sms_set_message_body(_msg->msg_h, text,  len)
-				);
+		ret = ERROR_CONVERT(msg_set_str_value(_msg->msg_h, MSG_MESSAGE_SMS_DATA_STR, (char *)text, len));
 	}
 	else if (MESSAGES_TYPE_MMS == type)
 	{
@@ -656,7 +940,7 @@ int messages_set_text(messages_message_h msg, const char *text)
 int messages_get_text(messages_message_h msg, char **text)
 {
 	int ret;
-	const char *_text;
+	char _text[MAX_MSG_TEXT_LEN];
 	messages_message_type_e type;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
@@ -670,8 +954,8 @@ int messages_get_text(messages_message_h msg, char **text)
 
 	if (MESSAGES_TYPE_SMS == type)
 	{
-		_text = msg_sms_get_message_body(_msg->msg_h);
-		if (NULL == _text)
+		ret = msg_get_str_value(_msg->msg_h, MSG_MESSAGE_SMS_DATA_STR, _text, MAX_MSG_TEXT_LEN);
+		if (MSG_SUCCESS != ret)
 		{
 			*text = NULL;
 		}
@@ -715,6 +999,137 @@ int messages_get_text(messages_message_h msg, char **text)
 
 
 
+int messages_get_time(messages_message_h msg, time_t *time)
+{
+	int ret;
+	int _time;
+	
+	messages_message_s *_msg = (messages_message_s*)msg;
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+	CHECK_NULL(time);
+	
+	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_DISPLAY_TIME_INT, &_time);
+	if (MSG_SUCCESS != ret)
+	{
+		return ERROR_CONVERT(ret);
+	}
+
+	*time = (time_t)_time;
+
+	return MESSAGES_ERROR_NONE;
+}
+
+int messages_get_message_id(messages_message_h msg, int *msg_id)
+{
+	int ret;
+	int _id;
+	
+	messages_message_s *_msg = (messages_message_s*)msg;
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+	CHECK_NULL(msg_id);
+	
+	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_ID_INT, &_id);
+	if (MSG_SUCCESS != ret)
+	{
+		return ERROR_CONVERT(ret);
+	}
+	
+	*msg_id = _id;
+	
+	return MESSAGES_ERROR_NONE;
+}
+
+int messages_search_message_by_id(messages_service_h service, int msg_id, messages_message_h *msg)
+{
+	int ret;
+	msg_struct_t new_msg_h;
+	messages_message_type_e _msgType;
+	msg_struct_t sendOpt;
+
+	messages_service_s *_svc = (messages_service_s*)service;
+	messages_message_s *_msg = NULL;
+	
+	CHECK_NULL(_svc);
+	CHECK_NULL(_svc->service_h);
+	CHECK_NULL(msg);
+	
+	new_msg_h = msg_create_struct(MSG_STRUCT_MESSAGE_INFO);
+	sendOpt = msg_create_struct(MSG_STRUCT_SENDOPT);
+	ret = msg_get_message(_svc->service_h, msg_id, new_msg_h, sendOpt);
+	if (MSG_SUCCESS != ret)
+	{
+		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_get_message failed.", 
+	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
+		return MESSAGES_ERROR_OPERATION_FAILED;			
+	}
+	
+	_msg = (messages_message_s*)calloc(1, sizeof(messages_message_s));
+	_msg->text = NULL;
+	_msg->attachment_list = NULL;
+	if (NULL == _msg)
+	{
+		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_msg'."
+			, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+		return MESSAGES_ERROR_OUT_OF_MEMORY;
+	}
+	
+	_msg->msg_h = new_msg_h;
+	
+	messages_get_message_type((messages_message_h)_msg, &_msgType);	
+	if (MESSAGES_TYPE_MMS == _msgType)
+	{
+		ret = _messages_load_mms_data(_msg, _svc->service_h);
+		if (MESSAGES_ERROR_NONE != ret) {
+			free(_msg);
+			return ret;
+		}
+	}
+	
+	*msg = (messages_message_h)_msg;
+	
+	return MESSAGES_ERROR_NONE;
+}
+
+int messages_get_mbox_type(messages_message_h msg, messages_message_box_e *mbox)
+{
+	int ret;
+	int folder_id;
+	
+	messages_message_s *_msg = (messages_message_s*)msg;
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+	CHECK_NULL(mbox);
+	
+	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_FOLDER_ID_INT, &folder_id);
+	if (MSG_SUCCESS != ret)
+	{
+		return ERROR_CONVERT(ret);
+	}
+	
+	switch (folder_id) {
+	case MSG_INBOX_ID: 
+		*mbox = MESSAGES_MBOX_INBOX;
+		break;
+	case MSG_OUTBOX_ID:
+		*mbox = MESSAGES_MBOX_OUTBOX;
+		break;
+	case MSG_SENTBOX_ID:
+		*mbox = MESSAGES_MBOX_SENTBOX;
+		break;
+	case MSG_DRAFT_ID:
+		*mbox = MESSAGES_MBOX_DRAFT;
+		break;
+	default:
+		*mbox = MESSAGES_MBOX_ALL;
+		break;
+	}
+	
+	return MESSAGES_ERROR_NONE;
+}
+
+
 // MMS /////////////////////////////////////////////////////////////////////
 
 int messages_mms_set_subject(messages_message_h msg, const char *subject)
@@ -738,8 +1153,8 @@ int messages_mms_set_subject(messages_message_h msg, const char *subject)
 			, __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
 		return MESSAGES_ERROR_INVALID_PARAMETER;		
 	}
-
-	ret = msg_set_subject(_msg->msg_h, subject);
+	
+	ret = msg_set_str_value(_msg->msg_h, MSG_MESSAGE_SUBJECT_STR, (char *)subject, strlen(subject));
 
 	return ERROR_CONVERT(ret);
 }
@@ -747,7 +1162,7 @@ int messages_mms_set_subject(messages_message_h msg, const char *subject)
 int messages_mms_get_subject(messages_message_h msg, char **subject)
 {
 	int ret;
-	const char *_subject;
+	char _subject[MAX_SUBJECT_LEN];
 	messages_message_type_e type;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
@@ -766,9 +1181,9 @@ int messages_mms_get_subject(messages_message_h msg, char **subject)
 			, __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
 		return MESSAGES_ERROR_INVALID_PARAMETER;		
 	}
-
-	_subject = msg_get_subject(_msg->msg_h);
-	if (NULL == _subject) 
+		
+	ret = msg_get_str_value(_msg->msg_h, MSG_MESSAGE_SUBJECT_STR, _subject, MAX_SUBJECT_LEN);
+	if (MSG_SUCCESS != ret)
 	{
 		*subject = NULL;
 	}
@@ -913,10 +1328,13 @@ int _messages_save_mms_data(messages_message_s *msg)
 	int i;
 	int ret;
 
-	MMS_MESSAGE_DATA_S *mms_data;
-	MMS_SMIL_ROOTLAYOUT *layout;
-	MMS_PAGE_S *page;
-	MMS_MEDIA_S *media;
+	msg_struct_t mms_data;
+	msg_struct_t region;
+	
+	msg_struct_t page;
+	msg_struct_t media;
+	msg_struct_t smil_text;
+	msg_struct_t mms_attach;
 
 	messages_attachment_s *attach;
 	messages_attachment_s *image;
@@ -925,8 +1343,8 @@ int _messages_save_mms_data(messages_message_s *msg)
 	char *filepath = NULL;
 
 	CHECK_NULL(msg);
-
-	mms_data = msg_mms_create_message();
+	
+	mms_data = msg_create_struct(MSG_STRUCT_MMS);
 	if (NULL == mms_data)
 	{
 	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_mms_create_message failed.", 
@@ -964,66 +1382,79 @@ int _messages_save_mms_data(messages_message_s *msg)
 	}
 
 	// Layout Setting
-	layout = msg_mms_set_rootlayout(mms_data, 100, 100, 0xffffff);
-	if (NULL == layout)
-	{
-	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_mms_set_rootlayout failed.", 
-	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
-	   	msg_mms_destroy_message(mms_data);
-		return MESSAGES_ERROR_OPERATION_FAILED;
-	}
+	msg_set_int_value(mms_data, MSG_MMS_ROOTLAYOUT_WIDTH_INT, 100);
+	msg_set_int_value(mms_data, MSG_MMS_ROOTLAYOUT_HEIGHT_INT, 100);
+	msg_set_int_value(mms_data, MSG_MMS_ROOTLAYOUT_BGCOLOR_INT, 0xffffff);
+	msg_set_bool_value(mms_data, MSG_MMS_ROOTLAYOUT_WIDTH_PERCENT_BOOL, true);
+	msg_set_bool_value(mms_data, MSG_MMS_ROOTLAYOUT_HEIGHT_PERCENT_BOOL, true);
 
 	if (NULL == image)
 	{
-		msg_mms_add_region(mms_data, "Text", 0, 0, 100, 100, 0xffffff);
+		msg_mms_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Text", 4);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_HEIGHT_INT, 100);
+		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);		
 	}
 	else if (NULL == msg->text)
 	{
-		msg_mms_add_region(mms_data, "Image", 0, 0, 100, 100, 0xffffff);
+		msg_mms_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Image", 5);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_HEIGHT_INT, 100);
+		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);		
 	}
 	else
 	{
-		msg_mms_add_region(mms_data, "Image", 0, 0, 100, 50, 0xffffff);
-		msg_mms_add_region(mms_data, "Text", 0, 50, 100, 50, 0xffffff);
+		msg_mms_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Image", 5);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_HEIGHT_INT, 50);
+		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);
+		
+		msg_mms_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Text", 4);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 50);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
+		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_HEIGHT_INT, 50);
+		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);
 	}
 
 	// Add Media
-	page = msg_mms_add_page(mms_data, 5440);
-	if (NULL == page)
-	{
-	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_mms_add_page failed.", 
-	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
-	   	msg_mms_destroy_message(mms_data);
-		return MESSAGES_ERROR_OPERATION_FAILED;
-	}
+	msg_mms_add_item(mms_data, MSG_STRUCT_MMS_PAGE, &page);
+	msg_set_int_value(page, MSG_MMS_PAGE_PAGE_DURATION_INT, 5440);
 
 	if (NULL != image)
 	{
 		if (MESSAGES_MEDIA_IMAGE == image->media_type)
 		{
-			media = msg_mms_add_media(page, MMS_SMIL_MEDIA_IMG, "Image", (char *)image->filepath);
-			if (NULL == media)
-			{
-				LOGW("msg_mms_add_media failed, filepath=%s", image->filepath);
-			}
+			msg_mms_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
+			msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_IMG);
+			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Image", 5);
+			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)image->filepath, MAX_IMAGE_PATH_LEN);
 		}
 		else if (MESSAGES_MEDIA_VIDEO == image->media_type)
 		{
-			media = msg_mms_add_media(page, MMS_SMIL_MEDIA_VIDEO, "Image", (char *)image->filepath);
-			if (NULL == media)
-			{
-				LOGW("msg_mms_add_media failed, filepath=%s", image->filepath);
-			}
+			msg_mms_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
+			msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_VIDEO);
+			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Image", 5);
+			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)image->filepath, MAX_IMAGE_PATH_LEN);
 		}
 	}
 
 	if (NULL != audio)
 	{
-		media = msg_mms_add_media(page, MMS_SMIL_MEDIA_AUDIO, NULL, (char *)audio->filepath);
-		if (NULL == media)
-		{
-			LOGW("msg_mms_add_media failed, filepath=%s", audio->filepath);
-		}
+		msg_mms_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
+		msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_AUDIO);
+		msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Image", 5);
+		msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)image->filepath, MAX_IMAGE_PATH_LEN);
 	}
 
 	if (NULL != msg->text)
@@ -1031,17 +1462,15 @@ int _messages_save_mms_data(messages_message_s *msg)
 		ret = _messages_save_textfile(msg->text, &filepath);
 		if (MESSAGES_ERROR_NONE == ret)
 		{
-			media = msg_mms_add_media(page, MMS_SMIL_MEDIA_TEXT, "Text", (char *)filepath);
-			if (NULL != media)
-			{
-				media->sMedia.sText.nColor = 0x000000;
-				media->sMedia.sText.nSize = MMS_SMIL_FONT_SIZE_NORMAL;
-				media->sMedia.sText.bBold = false;
-			}
-			else
-			{
-				LOGW("msg_mms_add_media failed, filepath=%s", audio->filepath);
-			}
+			msg_mms_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
+			msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_TEXT);
+			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Text", 4);
+			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)filepath, MAX_IMAGE_PATH_LEN);
+			
+			msg_get_struct_handle(media, MSG_MMS_MEDIA_SMIL_TEXT_HND, &smil_text);
+			msg_set_int_value(smil_text, MSG_MMS_SMIL_TEXT_COLOR_INT, 0x000000);
+			msg_set_int_value(smil_text, MSG_MMS_SMIL_TEXT_SIZE_INT, MMS_SMIL_FONT_SIZE_NORMAL);
+			msg_set_bool_value(smil_text, MSG_MMS_SMIL_TEXT_BOLD_BOOL, false);
 		}
 
 		if (NULL != filepath)
@@ -1056,52 +1485,64 @@ int _messages_save_mms_data(messages_message_s *msg)
 		attach = g_slist_nth_data(msg->attachment_list, i);
 		if (image != attach && audio != attach)
 		{
-			msg_mms_add_attachment(mms_data, (char *)attach->filepath);
+			msg_mms_add_item(mms_data, MSG_STRUCT_MMS_ATTACH, &mms_attach);
+			msg_set_str_value(mms_attach, MSG_MMS_ATTACH_FILEPATH_STR, (char *)attach->filepath, MAX_IMAGE_PATH_LEN);
 		}
 	}
-
-
-	ret = msg_mms_set_message_body(msg->msg_h, mms_data);
+	
+	ret = msg_set_mms_struct(msg->msg_h, mms_data);
 	if (MSG_SUCCESS != ret)
 	{
-	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_mms_add_page failed.", 
+	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_set_mms_struct failed.", 
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
-		msg_mms_destroy_message(mms_data);
+		msg_release_struct(&mms_data);
 		return MESSAGES_ERROR_OPERATION_FAILED;
 	}
-
-	msg_mms_destroy_message(mms_data);
+	
+	msg_release_struct(&mms_data);
 
 	return MESSAGES_ERROR_NONE;
 }
 
-int _messages_load_mms_data(messages_message_s *msg, MSG_HANDLE_T handle)
+int _messages_load_mms_data(messages_message_s *msg, msg_handle_t handle)
 {
 	int i,j;
 	int ret;
 	int msg_id;
-	msg_message_t new_msg_h;
-	MSG_SENDINGOPT_S sendOpt = {0, };
-	MMS_MESSAGE_DATA_S *mms_data;
-	MMS_PAGE_S *mms_page;
-	MMS_MEDIA_S *mms_media;
-	MMS_ATTACH_S *mms_attach;
+	int media_type;
+	char filepath[MAX_IMAGE_PATH_LEN];
+	
+	msg_struct_t new_msg_h;
+	msg_struct_t sendOpt;
+	
+	msg_struct_t mms_data;
+	
+	msg_list_handle_t mms_page_list;
+	msg_list_handle_t mms_media_list;
+	msg_list_handle_t mms_attach_list;
+	
+	
+	msg_struct_t mms_page;
+	msg_struct_t mms_media;
+	msg_struct_t mms_attach;
+	
 	messages_attachment_s *attach;
 
 	CHECK_NULL(msg);
 
 	// Get MessageId
-	msg_id = msg_get_message_id(msg->msg_h);
-	if (MSG_ERR_NULL_POINTER == msg_id)
+	ret = msg_get_int_value(msg->msg_h, MSG_MESSAGE_ID_INT, &msg_id);
+	if (MSG_SUCCESS != ret)
 	{
-		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_get_message_id failed.", 
+		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_get_int_value(MSG_MESSAGE_ID_INT) failed.", 
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
 		return MESSAGES_ERROR_OPERATION_FAILED;	
 	}
 
 	// Load MMS_MESSAGE_DATA_S
-	new_msg_h = msg_new_message();
-	ret = msg_get_message(handle, msg_id, new_msg_h, &sendOpt);
+	new_msg_h = msg_create_struct(MSG_STRUCT_MESSAGE_INFO);
+	sendOpt = msg_create_struct(MSG_STRUCT_SENDOPT);
+	ret = msg_get_message(handle, msg_id, new_msg_h, sendOpt);
 	if (MSG_SUCCESS != ret)
 	{
 		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_get_message failed.", 
@@ -1109,38 +1550,39 @@ int _messages_load_mms_data(messages_message_s *msg, MSG_HANDLE_T handle)
 		return MESSAGES_ERROR_OPERATION_FAILED;			
 	}
 
-	mms_data = msg_mms_create_message();
+	mms_data = msg_create_struct(MSG_STRUCT_MMS);
 	if (NULL == mms_data)
 	{
 	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_mms_create_message failed.", 
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
-	   	msg_release_message(&new_msg_h);
+	   	msg_release_struct(&new_msg_h);
 		return MESSAGES_ERROR_OPERATION_FAILED;
 	}
 
-	ret = msg_mms_get_message_body(new_msg_h, mms_data);
+	ret = msg_get_mms_struct(new_msg_h, mms_data);
 	if (MSG_SUCCESS != ret)
 	{
 	   	LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : msg_mms_get_message_body failed.", 
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
-	   	msg_mms_destroy_message(mms_data);
-	   	msg_release_message(&new_msg_h);
+	   	msg_release_struct(&mms_data);
+	   	msg_release_struct(&new_msg_h);
 		return MESSAGES_ERROR_OPERATION_FAILED;
 	}
 
-	msg_release_message(&new_msg_h);
-
 	// Load Media, Text
-	for (i=0; i < mms_data->pageCnt; i++)
+	msg_get_list_handle(mms_data, MSG_MMS_PAGE_LIST_HND, (void **)&mms_page_list);	
+	for (i=0; i < msg_list_length(mms_page_list); i++)
 	{
-		mms_page = msg_mms_get_page(mms_data, i);
+		mms_page = (msg_struct_t)msg_list_nth_data(mms_page_list, i);
 		if (NULL == mms_page)
 		{
 			continue;
 		}
-		for (j=0; j < mms_page->mediaCnt; j++)
+		
+		msg_get_list_handle(mms_page, MSG_MMS_PAGE_MEDIA_LIST_HND, (void **)&mms_media_list);		
+		for (j=0; j < msg_list_length(mms_media_list); j++)
 		{
-			mms_media = msg_mms_get_media(mms_page, j);
+			mms_media = (msg_struct_t)msg_list_nth_data(mms_media_list, i);
 			if (NULL == mms_media)
 			{
 				continue;
@@ -1153,15 +1595,18 @@ int _messages_load_mms_data(messages_message_s *msg, MSG_HANDLE_T handle)
 					, __FUNCTION__, MESSAGES_ERROR_OUT_OF_MEMORY);
 				break;
 			}
-
-			if (MMS_SMIL_MEDIA_TEXT == mms_media->mediatype)
+			
+			msg_get_int_value(mms_media, MSG_MMS_MEDIA_TYPE_INT, &media_type);
+			msg_get_str_value(mms_media, MSG_MMS_MEDIA_FILEPATH_STR, filepath, MAX_IMAGE_PATH_LEN);
+			
+			if (MMS_SMIL_MEDIA_TEXT == media_type)
 			{
-				_messages_load_textfile(mms_media->szFilePath, &msg->text);
+				_messages_load_textfile(filepath, &msg->text);
 			}
 			else
 			{
-				strncpy(attach->filepath, mms_media->szFilePath, MSG_FILEPATH_LEN_MAX);
-				switch (mms_media->mediatype)
+				strncpy(attach->filepath, filepath, MAX_IMAGE_PATH_LEN);
+				switch (media_type)
 				{
 					case MMS_SMIL_MEDIA_IMG:
 						attach->media_type = MESSAGES_MEDIA_IMAGE;
@@ -1182,9 +1627,10 @@ int _messages_load_mms_data(messages_message_s *msg, MSG_HANDLE_T handle)
 	}
 
 	// Load Attachments
-	for (i=0; i < mms_data->attachCnt; i++)
+	msg_get_list_handle(mms_data, MSG_MMS_ATTACH_LIST_HND, (void **)&mms_attach_list);
+	for (i=0; i < msg_list_length(mms_attach_list); i++)
 	{
-		mms_attach = msg_mms_get_attachment(mms_data, i);
+		mms_attach = (msg_struct_t)msg_list_nth_data(mms_attach_list, i);
 		if (NULL == mms_attach)
 		{
 			continue;
@@ -1197,12 +1643,13 @@ int _messages_load_mms_data(messages_message_s *msg, MSG_HANDLE_T handle)
 				, __FUNCTION__, MESSAGES_ERROR_OUT_OF_MEMORY);
 			break;
 		}
-
-		strncpy(attach->filepath, mms_attach->szFilePath, MSG_FILEPATH_LEN_MAX);
+		msg_get_str_value(mms_attach, MSG_MMS_ATTACH_FILEPATH_STR, filepath, MAX_IMAGE_PATH_LEN);
+		strncpy(attach->filepath, filepath, MAX_IMAGE_PATH_LEN);
 		attach->media_type = _messages_get_media_type_from_filepath(attach->filepath);
 	}
 
-	msg_mms_destroy_message(mms_data);
+	msg_release_struct(&new_msg_h);
+
 
 	return MESSAGES_ERROR_NONE;
 }
@@ -1324,9 +1771,9 @@ int _messages_get_media_type_from_filepath(const char *filepath)
 	return ret;
 }
 
-MSG_FOLDER_ID_T _messages_convert_mbox_to_fw(messages_message_box_e mbox)
+int _messages_convert_mbox_to_fw(messages_message_box_e mbox)
 {
-	MSG_FOLDER_ID_T folderId;
+	int folderId;
 	switch(mbox)
 	{
 		case MESSAGES_MBOX_INBOX:
@@ -1348,9 +1795,9 @@ MSG_FOLDER_ID_T _messages_convert_mbox_to_fw(messages_message_box_e mbox)
 	return folderId;
 }
 
-MSG_MESSAGE_TYPE_T _messages_convert_msgtype_to_fw(messages_message_type_e type)
+int _messages_convert_msgtype_to_fw(messages_message_type_e type)
 {
-	MSG_MESSAGE_TYPE_T msgType;
+	int msgType;
 	switch (type)
 	{
 		case MESSAGES_TYPE_SMS:
@@ -1364,6 +1811,27 @@ MSG_MESSAGE_TYPE_T _messages_convert_msgtype_to_fw(messages_message_type_e type)
 			break;
 	}
 	return msgType;
+}
+
+int _messages_convert_recipient_to_fw(messages_recipient_type_e type)
+{
+	int ret;
+	switch (type)
+	{
+		case MESSAGES_RECIPIENT_TO:
+			ret = MSG_RECIPIENTS_TYPE_TO;
+			break;
+		case MESSAGES_RECIPIENT_CC:
+			ret = MSG_RECIPIENTS_TYPE_CC;
+			break;
+		case MESSAGES_RECIPIENT_BCC:
+			ret = MSG_RECIPIENTS_TYPE_BCC;
+			break;
+		default:
+			ret = MSG_RECIPIENTS_TYPE_UNKNOWN;
+			break;
+	}
+	return ret;
 }
 
 

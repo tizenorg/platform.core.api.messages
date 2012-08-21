@@ -25,7 +25,7 @@ extern "C"
 #endif
 
 /**
- * @addtogroup TIZEN_MESSAGING_MODULE
+ * @addtogroup CAPI_MESSAGING_MESSAGES_MODULE
  * @{
  */
 
@@ -39,7 +39,6 @@ typedef struct messages_service_s *messages_service_h;
  * @brief The message handle.
  */
 typedef struct messages_message_s *messages_message_h;
-
 
 /**
  * @brief The message box type.
@@ -73,6 +72,15 @@ typedef enum {
 	MESSAGES_MEDIA_VIDEO = 3, /**< The video */
 } messages_media_type_e;
 
+/**
+ * @brief The recipient type of a message.
+ */
+typedef enum {
+	MESSAGES_RECIPIENT_UNKNOWN = 0,
+	MESSAGES_RECIPIENT_TO = 1,
+	MESSAGES_RECIPIENT_CC = 2,
+	MESSAGES_RECIPIENT_BCC = 3,
+} messages_recipient_type_e;
 
 /**
  * @brief The result of sending a message.
@@ -81,7 +89,6 @@ typedef enum {
 	MESSAGES_SENDING_FAILED = -1, /**< Message sending is failed */
 	MESSAGES_SENDING_SUCCEEDED = 0, /**< Message sending is succeeded */
 } messages_sending_result_e;
-
 
 
 /**
@@ -129,9 +136,9 @@ typedef void (* messages_incoming_cb)(messages_message_h incoming_msg, void *use
  *
  * @return @c true to continue with the next iteration of the loop or return @c false to break out of the loop.
  *
- * @pre messages_foreach_message_from_db() will invoke this callback function.
+ * @pre messages_foreach_message() will invoke this callback function.
  *
- * @see messages_foreach_message_from_db()
+ * @see messages_foreach_message()
  */
 typedef bool (* messages_search_cb)(messages_message_h msg, int index, int result_count, int total_count, void *user_data);
 
