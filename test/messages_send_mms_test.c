@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
 	messages_set_text(msg, "This is a multi-media message!");
 
 	messages_mms_set_subject(msg, "TEST!");
-	messages_mms_add_attachment(msg, MESSAGES_MEDIA_VIDEO, "/opt/etc/msg-service/V091120_104905.3gp");
-	messages_mms_add_attachment(msg, MESSAGES_MEDIA_IMAGE, "/opt/etc/msg-service/P091120_104633.jpg");
+//	messages_mms_add_attachment(msg, MESSAGES_MEDIA_VIDEO, "/opt/etc/msg-service/V091120_104905.3gp");
+//	messages_mms_add_attachment(msg, MESSAGES_MEDIA_IMAGE, "/opt/etc/msg-service/P091120_104633.jpg");
 	
 	printf("Before Sending\n");
 	

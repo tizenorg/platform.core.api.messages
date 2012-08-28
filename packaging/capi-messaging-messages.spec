@@ -1,7 +1,7 @@
 Name:       capi-messaging-messages
 Summary:    A SMS/MMS library in Tizen Native API
 Version: 0.1.0
-Release:    11
+Release:    12
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 BuildRequires:  cmake

@@ -103,6 +103,7 @@ int messages_close_service(messages_service_h svc)
 	int ret;
 	
 	messages_service_s *_svc = (messages_service_s *)svc;
+	CHECK_NULL(_svc);
 
 	ret = msg_close_msg_handle(&_svc->service_h);
 	
@@ -209,7 +210,7 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e *t
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
 	CHECK_NULL(type);
-	
+
 	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_TYPE_INT, &msgType);
 	if (ret != MSG_SUCCESS)
 	{
@@ -395,7 +396,7 @@ int messages_remove_all_addresses(messages_message_h msg)
 	CHECK_NULL(_msg->msg_h);
 
 	ret = msg_get_list_handle(_msg->msg_h, MSG_MESSAGE_ADDR_LIST_STRUCT, (void **)&addr_list);
-	if (MSG_SUCCESS != ret)
+	if (MSG_SUCCESS == ret)
 	{
 		addr_list->nCount = 0;
 	}
@@ -427,7 +428,6 @@ int messages_send_message(messages_service_h svc, messages_message_h msg, bool s
 	CHECK_NULL(_svc->service_h);
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
-
 
 	sendOpt = msg_create_struct(MSG_STRUCT_SENDOPT);
 	msg_set_bool_value(sendOpt, MSG_SEND_OPT_SETTING_BOOL, true);
@@ -946,6 +946,7 @@ int messages_get_text(messages_message_h msg, char **text)
 	messages_message_s *_msg = (messages_message_s*)msg;
 	CHECK_NULL(_msg);
 	CHECK_NULL(_msg->msg_h);
+	CHECK_NULL(text);
 
 	ret = messages_get_message_type(msg, &type);
 	if (MESSAGES_ERROR_NONE != ret) {
