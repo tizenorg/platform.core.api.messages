@@ -270,7 +270,14 @@ int messages_add_address(messages_message_h msg, const char *address, messages_r
 	}
 	else if (MSG_TYPE_MMS == msgType)
 	{
-		msg_set_int_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_TYPE_INT, MSG_ADDRESS_TYPE_PLMN);
+		if (strchr(address, '@') == NULL)
+		{
+			msg_set_int_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_TYPE_INT, MSG_ADDRESS_TYPE_PLMN);
+		}
+		else
+		{
+			msg_set_int_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_TYPE_INT, MSG_ADDRESS_TYPE_EMAIL);
+		}
 		msg_set_int_value(addr_info, MSG_ADDRESS_INFO_RECIPIENT_TYPE_INT, _messages_convert_recipient_to_fw(type));
 	}
 	else
