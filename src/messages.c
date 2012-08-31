@@ -451,6 +451,7 @@ int messages_send_message(messages_service_h svc, messages_message_h msg, bool s
 		
 		ret = msg_sms_send_message(_svc->service_h, req);
 		
+		msg_get_int_value(req, MSG_REQUEST_REQUESTID_INT, &reqId);
 		msg_release_struct(&req);
 	}
 	else if (MESSAGES_TYPE_MMS == msgType)
@@ -475,6 +476,7 @@ int messages_send_message(messages_service_h svc, messages_message_h msg, bool s
 			
 			ret = msg_mms_send_message(_svc->service_h, req);
 			
+			msg_get_int_value(req, MSG_REQUEST_REQUESTID_INT, &reqId);
 			msg_release_struct(&req);
 		}
 	}
@@ -492,11 +494,9 @@ int messages_send_message(messages_service_h svc, messages_message_h msg, bool s
 		// Add callback to mapping table
 		_cb = (messages_sent_callback_s *)malloc(sizeof(messages_sent_callback_s));
 		if (NULL != _cb) {
-			msg_get_int_value(req, MSG_REQUEST_REQUESTID_INT, &reqId);
 			_cb->req_id = reqId;
 			_cb->callback = (void *)callback;
 			_cb->user_data = user_data;
-			
 			_svc->sent_cb_list = g_slist_append(_svc->sent_cb_list, _cb);
 		}
 	}
@@ -750,7 +750,6 @@ void _messages_sent_mediator_cb(msg_handle_t handle, msg_struct_t pStatus, void 
 	for (i=0; i < g_slist_length(_svc->sent_cb_list); i++)
 	{
 		_cb = (messages_sent_callback_s *)g_slist_nth_data(_svc->sent_cb_list, i);
-		
 		if (NULL != _cb && _cb->req_id == reqId)
 		{
 			ret = (status == MSG_NETWORK_SEND_SUCCESS) ? 
