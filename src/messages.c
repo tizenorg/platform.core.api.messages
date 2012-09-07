@@ -1460,8 +1460,8 @@ int _messages_save_mms_data(messages_message_s *msg)
 	{
 		msg_mms_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
 		msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_AUDIO);
-		msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Image", 5);
-		msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)image->filepath, MAX_IMAGE_PATH_LEN);
+		msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Audio", 5);
+		msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)audio->filepath, MAX_IMAGE_PATH_LEN);
 	}
 
 	if (NULL != msg->text)
