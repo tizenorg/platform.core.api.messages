@@ -76,10 +76,10 @@ typedef enum {
  * @brief The recipient type of a message.
  */
 typedef enum {
-	MESSAGES_RECIPIENT_UNKNOWN = 0,
-	MESSAGES_RECIPIENT_TO = 1,
-	MESSAGES_RECIPIENT_CC = 2,
-	MESSAGES_RECIPIENT_BCC = 3,
+	MESSAGES_RECIPIENT_UNKNOWN = 0, /**< Unknown */
+	MESSAGES_RECIPIENT_TO = 1, /**< The 'To' recipient  */
+	MESSAGES_RECIPIENT_CC = 2, /**< The 'Cc' (carbon copy) recipient */
+	MESSAGES_RECIPIENT_BCC = 3, /**< The 'Bcc' (blind carbon copy) recipient */
 } messages_recipient_type_e;
 
 /**
