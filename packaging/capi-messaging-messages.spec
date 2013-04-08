@@ -34,13 +34,12 @@ Requires:  pkgconfig(capi-base-common)
 MAJORVER=`echo %{version} | awk 'BEGIN {FS="."}{print $1}'`
 rm -fr cmake_build_tmp; mkdir cmake_build_tmp
 cd cmake_build_tmp
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
+%cmake .. -DFULLVER=%{version} -DMAJORVER=${MAJORVER}
 
 
 make %{?jobs:-j%jobs}
 
 %install
-rm -rf %{buildroot}
 
 mkdir -p %{buildroot}/usr/share/license
 cp LICENSE %{buildroot}/usr/share/license/%{name}
@@ -61,5 +60,3 @@ cd cmake_build_tmp
 %{_includedir}/messaging/*.h
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/libcapi-messaging-messages.so
-
-
