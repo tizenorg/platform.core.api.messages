@@ -1,0 +1,8 @@
+Change-Id: Ib6b53777347f754138642a64722ad239e3e2232a
+Code-Review+2: Ryan Ware <ware@linux.intel.com>
+Verified+1: Ryan Ware <ware@linux.intel.com>
+Submitted-by: Ryan Ware <ware@linux.intel.com>
+Submitted-at: Mon, 08 Jul 2013 10:06:49 -0700
+Reviewed-on: https://review.tizen.org/gerrit/4537
+Project: platform/core/api/messages
+Branch: refs/heads/tizen
