@@ -55,6 +55,8 @@ void _messages_push_incoming_mediator_cb(msg_handle_t handle, const char *push_h
 int messages_push_add_incoming_cb(messages_service_h service, const char *app_id, 
 					  messages_push_incoming_cb callback, void *user_data)
 {
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+
 	int ret;
 	messages_push_incoming_callback_s *_cb;
 	
@@ -94,6 +96,8 @@ int messages_push_add_incoming_cb(messages_service_h service, const char *app_id
 
 int messages_push_remove_incoming_cb(messages_service_h service, const char *app_id)
 {
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+
 	int i;
 	messages_push_incoming_callback_s *_cb;
 
@@ -120,6 +124,8 @@ int messages_push_remove_incoming_cb(messages_service_h service, const char *app
 
 int messages_push_register(messages_service_h service, const char *content_type, const char *app_id)
 {
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+
 	int ret;
 	
 	msg_struct_t push_info;
@@ -132,9 +138,9 @@ int messages_push_register(messages_service_h service, const char *content_type,
 	CHECK_NULL(content_type);
 	CHECK_NULL(app_id);
 	
-	ret = app_get_package(&pkg_name);
+	ret = app_get_id(&pkg_name);
 	if (APP_ERROR_NONE != ret) {
-		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : app_get_package failed.", 
+		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : app_get_id failed.",
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
 		return MESSAGES_ERROR_OPERATION_FAILED;			
 	}
@@ -157,6 +163,8 @@ int messages_push_register(messages_service_h service, const char *content_type,
 
 int messages_push_deregister(messages_service_h service, const char *content_type, const char *app_id)
 {
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+
 	int ret;
 	
 	msg_struct_t push_info;
@@ -169,9 +177,9 @@ int messages_push_deregister(messages_service_h service, const char *content_typ
 	CHECK_NULL(content_type);
 	CHECK_NULL(app_id);
 	
-	ret = app_get_package(&pkg_name);
+	ret = app_get_id(&pkg_name);
 	if (APP_ERROR_NONE != ret) {
-		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : app_get_package failed.", 
+		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : app_get_id failed.",
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
 		return MESSAGES_ERROR_OPERATION_FAILED;			
 	}
@@ -195,6 +203,8 @@ int messages_push_deregister(messages_service_h service, const char *content_typ
 int messages_push_reregister(messages_service_h service, const char *content_type, const char *app_id,
 							 const char *dst_content_type, const char *dst_app_id)
 {
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+
 	int ret;
 	
 	msg_struct_t push_info;
@@ -210,9 +220,9 @@ int messages_push_reregister(messages_service_h service, const char *content_typ
 	CHECK_NULL(dst_content_type);
 	CHECK_NULL(dst_app_id);
 	
-	ret = app_get_package(&pkg_name);
+	ret = app_get_id(&pkg_name);
 	if (APP_ERROR_NONE != ret) {
-		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : app_get_package failed.", 
+		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : app_get_id failed.",
 	   		__FUNCTION__, __LINE__, MESSAGES_ERROR_OPERATION_FAILED);
 		return MESSAGES_ERROR_OPERATION_FAILED;			
 	}
