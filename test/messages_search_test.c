@@ -9,6 +9,7 @@ bool _search_cb(messages_message_h msg, int index, int result_count, int total_c
 	messages_message_type_e msgType;
 	messages_message_box_e mbox;
 	int ret;
+	int cnt;
 	char *text;
 	int i, nAddr;
 	char *addr = NULL;
@@ -40,6 +41,11 @@ bool _search_cb(messages_message_h msg, int index, int result_count, int total_c
 		if (MESSAGES_ERROR_NONE == ret) {
 			printf("Subject: %s\n", text);
 			free(text);
+		}
+
+		ret = messages_mms_get_attachment_count(msg, &cnt);
+		if (MESSAGES_ERROR_NONE == ret) {
+			printf("Attachments: %d\n", cnt);
 		}
 	} else {
 		printf("Type: Unknown");

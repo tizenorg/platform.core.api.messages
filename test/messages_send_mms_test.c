@@ -1,17 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <glib.h>
+
 #include <messages.h>
 
-#define TEST_NUMBER "000000000"
+//#define TEST_NUMBER "splusa2012@gmail.com"
+#define TEST_NUMBER "+491726597478"
+
+static GMainLoop *mainloop;
+
+static void sig_quit(int signo)
+{
+        if(mainloop)
+        {
+                g_main_loop_quit(mainloop);
+        }
+}
 
 void _sent_cb(messages_sending_result_e result, void *user_data)
 {
+	printf("sending result=%d\n", (int)result);
 }
 
 int main(int argc, char *argv[])
 {
 	int ret;
+
+        signal(SIGINT, sig_quit);
+        signal(SIGTERM, sig_quit);
+        signal(SIGQUIT, sig_quit);
+	mainloop = g_main_loop_new(NULL, FALSE);
 
 	messages_service_h svc;
 	messages_message_h msg;
@@ -34,8 +53,9 @@ int main(int argc, char *argv[])
 	messages_set_text(msg, "This is a multi-media message!");
 
 	messages_mms_set_subject(msg, "TEST!");
-//	messages_mms_add_attachment(msg, MESSAGES_MEDIA_VIDEO, "/opt/etc/msg-service/V091120_104905.3gp");
+//	messages_mms_add_attachment(msg, MESSAGES_MEDIA_AUDIO, "/tmp/test.amr");
 //	messages_mms_add_attachment(msg, MESSAGES_MEDIA_IMAGE, "/opt/etc/msg-service/P091120_104633.jpg");
+	messages_mms_add_attachment(msg, MESSAGES_MEDIA_IMAGE, "/opt/media/Images/image2.jpg");
 	
 	printf("Before Sending\n");
 	
@@ -45,6 +65,9 @@ int main(int argc, char *argv[])
 		printf("error: messages_send_message() = %d", ret);
 		return 1;
 	}
+
+        g_main_loop_run(mainloop);
+        g_main_loop_unref(mainloop);
 
 	// destroy
 	messages_destroy_message(msg);

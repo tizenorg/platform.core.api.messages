@@ -1,5 +1,7 @@
 SET(fw_test "${fw_name}-test")
 
+SET(CMAKE_SKIP_BUILD_RPATH TRUE)
+
 INCLUDE(FindPkgConfig)
 pkg_check_modules(${fw_test} REQUIRED glib-2.0)
 FOREACH(flag ${${fw_test}_CFLAGS})
@@ -14,4 +16,6 @@ FOREACH(src ${sources})
     MESSAGE("${src_name}")
     ADD_EXECUTABLE(${src_name} ${src})
     TARGET_LINK_LIBRARIES(${src_name} ${fw_name} ${${fw_test}_LDFLAGS})
+
+#	INSTALL(TARGETS ${src_name} DESTINATION bin)
 ENDFOREACH()

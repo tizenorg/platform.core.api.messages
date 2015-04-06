@@ -3,7 +3,7 @@
 
 #include <messages.h>
 
-#define TEST_NUMBER "00000000000"
+#define TEST_NUMBER "447810507326"
 
 void _sent_cb(messages_sending_result_e result, void *user_data)
 {
