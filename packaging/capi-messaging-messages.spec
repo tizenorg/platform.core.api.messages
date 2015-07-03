@@ -5,7 +5,7 @@ Release:    1
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 
-%if "%{?tizen_profile_name}" == "wearable"
+%if "%{?profile}" == "wearable" || "%{?profile}" == "tv"
 ExcludeArch: %{arm} %ix86 x86_64
 %endif
 

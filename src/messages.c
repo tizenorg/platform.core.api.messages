@@ -45,7 +45,7 @@ int _messages_check_feature(char *feature_name);
 
 int messages_open_service(messages_service_h *svc)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	messages_service_s *_svc;
@@ -53,9 +53,9 @@ int messages_open_service(messages_service_h *svc)
 	CHECK_NULL(svc);
 
 	_svc = (messages_service_s*)calloc(1, sizeof(messages_service_s));
-	if (NULL == svc)
+	if (NULL == _svc)
 	{
-		LOGE("[%s] OUT_OF_MEMORY(0x%08x) fail to create a 'svc'."
+		LOGE("[%s] OUT_OF_MEMORY(0x%08x) fail to create a '_svc'."
 			, __FUNCTION__, MESSAGES_ERROR_OUT_OF_MEMORY);
 		return MESSAGES_ERROR_OUT_OF_MEMORY;
 	}
@@ -94,7 +94,7 @@ void _free_push_incoming_cb(messages_push_incoming_callback_s *cb)
 
 int messages_close_service(messages_service_h svc)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 
@@ -122,7 +122,7 @@ int messages_close_service(messages_service_h svc)
 
 int messages_create_message(messages_message_type_e type, messages_message_h *msg)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	messages_message_s *_msg = NULL;
@@ -192,7 +192,7 @@ int messages_create_message(messages_message_type_e type, messages_message_h *ms
 
 int messages_destroy_message(messages_message_h msg)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 
@@ -216,7 +216,7 @@ int messages_destroy_message(messages_message_h msg)
 
 int messages_get_message_type(messages_message_h msg, messages_message_type_e *type)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int msgType;
 	int ret;
@@ -265,7 +265,7 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e *t
 
 int messages_add_address(messages_message_h msg, const char *address, messages_recipient_type_e type)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 
@@ -318,7 +318,7 @@ int messages_add_address(messages_message_h msg, const char *address, messages_r
 
 int messages_get_address_count(messages_message_h msg, int *count)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	msg_list_handle_t addr_list = NULL;
@@ -341,10 +341,10 @@ int messages_get_address_count(messages_message_h msg, int *count)
 
 int messages_get_address(messages_message_h msg, int index, char **address, messages_recipient_type_e *type)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
-	char _address[MAX_ADDRESS_VAL_LEN] = {0, };
+	char _address[MAX_ADDRESS_VAL_LEN+1] = {0, };
 	int _type;
 	int count;
 
@@ -419,7 +419,7 @@ int messages_get_address(messages_message_h msg, int index, char **address, mess
 
 int messages_remove_all_addresses(messages_message_h msg)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	messages_message_s *_msg = (messages_message_s*)msg;
@@ -440,7 +440,7 @@ void _dump_message(messages_message_h msg)
 int messages_send_message(messages_service_h svc, messages_message_h msg, bool save_to_sentbox,
 							messages_sent_cb callback, void *user_data)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	/* Privacy check */
 	int privacy_ret = privacy_checker_check_by_privilege(MESSAGES_PRIVILEGE_WRITE);
@@ -544,7 +544,7 @@ int messages_get_message_count(messages_service_h service,
 							messages_message_box_e mbox, messages_message_type_e type,
 							int *count)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	msg_folder_id_t folderId;
@@ -584,6 +584,12 @@ int messages_get_message_count(messages_service_h service,
 	else
 	{
 		countInfo = msg_create_struct(MSG_STRUCT_COUNT_INFO);
+		if (NULL == countInfo) {
+			LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create 'countInfo'."
+				, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+			return MESSAGES_ERROR_OUT_OF_MEMORY;
+		}
+
 		folderId = _messages_convert_mbox_to_fw(mbox);
 		ret = ERROR_CONVERT(msg_count_message(_svc->service_h, folderId, countInfo));
 		if (MESSAGES_ERROR_NONE != ret)
@@ -616,7 +622,7 @@ int messages_search_message(messages_service_h service,
 							int offset, int limit,
 							messages_message_h **message_array, int *length, int *total)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int i;
 	int ret;
@@ -635,6 +641,11 @@ int messages_search_message(messages_service_h service,
 
 	// Set Condition
 	listCond = msg_create_struct(MSG_STRUCT_MSG_LIST_CONDITION);
+	if (NULL == listCond) {
+		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create 'listCond'."
+			, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+		return MESSAGES_ERROR_OUT_OF_MEMORY;
+	}
 
 	msg_set_int_value(listCond, MSG_LIST_CONDITION_FOLDER_ID_INT, _messages_convert_mbox_to_fw(mbox));
 	msg_set_int_value(listCond, MSG_LIST_CONDITION_MSGTYPE_INT, _messages_convert_msgtype_to_fw(type));
@@ -653,17 +664,18 @@ int messages_search_message(messages_service_h service,
 	msg_set_int_value(listCond, MSG_LIST_CONDITION_OFFSET_INT, offset);
 	msg_set_int_value(listCond, MSG_LIST_CONDITION_LIMIT_INT, limit);
 	ret = msg_get_message_list2(_svc->service_h, listCond, &msg_list);
+	msg_release_struct(&listCond);
 	if (MSG_SUCCESS != ret)
 	{
-		msg_release_struct(&listCond);
+		msg_release_list_struct(&msg_list);
 		return ERROR_CONVERT(ret);
 	}
-	msg_release_struct(&listCond);
 
 	// Result
 	_array = (messages_message_h*)calloc(msg_list.nCount + 1, sizeof(messages_message_h));
 	if (NULL == _array)
 	{
+		msg_release_list_struct(&msg_list);
 		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_array'."
 			, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
 		return MESSAGES_ERROR_OUT_OF_MEMORY;
@@ -676,7 +688,11 @@ int messages_search_message(messages_service_h service,
 		{
 			LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_msg'."
 				, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+			for (; i > 0; i--) {
+				free(_array[i-1]);
+			}
 			free(_array);
+			msg_release_list_struct(&msg_list);
 			return MESSAGES_ERROR_OUT_OF_MEMORY;
 		}
 
@@ -715,7 +731,7 @@ int messages_search_message(messages_service_h service,
 
 int messages_free_message_array(messages_message_h *message_array)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int i=0;
@@ -747,7 +763,7 @@ int messages_foreach_message(messages_service_h svc,
 							 int offset, int limit,
 							 messages_search_cb callback, void *user_data)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	/* Privacy check */
 	int privacy_ret = privacy_checker_check_by_privilege(MESSAGES_PRIVILEGE_READ);
@@ -865,7 +881,7 @@ void _messages_incoming_mediator_cb(msg_handle_t handle, msg_struct_t msg, void 
 
 int messages_set_message_incoming_cb(messages_service_h svc, messages_incoming_cb callback, void *user_data)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 
@@ -884,12 +900,14 @@ int messages_set_message_incoming_cb(messages_service_h svc, messages_incoming_c
 			return ret;
 		}
 
-		ret = ERROR_CONVERT(
-				msg_reg_mms_conf_message_callback(_svc->service_h, &_messages_incoming_mediator_cb, NULL, (void*)_svc)
-			);
-		if (MESSAGES_ERROR_NONE != ret)
-		{
-			return ret;
+		if (MESSAGES_ERROR_NONE == _messages_check_feature(MESSAGES_TELEPHONY_MMS_FEATURE)) {
+			ret = ERROR_CONVERT(
+					msg_reg_mms_conf_message_callback(_svc->service_h, &_messages_incoming_mediator_cb, NULL, (void*)_svc)
+				);
+			if (MESSAGES_ERROR_NONE != ret)
+			{
+				return ret;
+			}
 		}
 	}
 
@@ -902,7 +920,7 @@ int messages_set_message_incoming_cb(messages_service_h svc, messages_incoming_c
 
 int messages_add_sms_listening_port(messages_service_h service, int port)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	messages_service_s *_svc = (messages_service_s*)service;
@@ -927,7 +945,7 @@ int messages_add_sms_listening_port(messages_service_h service, int port)
 
 int messages_unset_message_incoming_cb(messages_service_h svc)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	messages_service_s *_svc = (messages_service_s*)svc;
 
@@ -942,7 +960,7 @@ int messages_unset_message_incoming_cb(messages_service_h svc)
 
 int messages_get_message_port(messages_message_h msg, int *port)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int _port;
@@ -965,7 +983,7 @@ int messages_get_message_port(messages_message_h msg, int *port)
 
 int messages_set_text(messages_message_h msg, const char *text)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int len;
@@ -1023,10 +1041,10 @@ int messages_set_text(messages_message_h msg, const char *text)
 
 int messages_get_text(messages_message_h msg, char **text)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
-	char _text[MAX_MSG_TEXT_LEN];
+	char _text[MAX_MSG_TEXT_LEN+1] = {0,};
 	messages_message_type_e type;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
@@ -1088,7 +1106,7 @@ int messages_get_text(messages_message_h msg, char **text)
 
 int messages_get_time(messages_message_h msg, time_t *time)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int _time;
@@ -1111,7 +1129,7 @@ int messages_get_time(messages_message_h msg, time_t *time)
 
 int messages_get_message_id(messages_message_h msg, int *msg_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int _id;
@@ -1135,7 +1153,7 @@ int messages_get_message_id(messages_message_h msg, int *msg_id)
 
 int messages_set_sim_id(messages_message_h msg, int sim_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 
@@ -1155,7 +1173,7 @@ int messages_set_sim_id(messages_message_h msg, int sim_id)
 
 int messages_get_sim_id(messages_message_h msg, int *sim_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int _id;
@@ -1179,7 +1197,7 @@ int messages_get_sim_id(messages_message_h msg, int *sim_id)
 
 int messages_search_message_by_id(messages_service_h service, int msg_id, messages_message_h *msg)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	msg_struct_t new_msg_h;
@@ -1194,7 +1212,20 @@ int messages_search_message_by_id(messages_service_h service, int msg_id, messag
 	CHECK_NULL(msg);
 
 	new_msg_h = msg_create_struct(MSG_STRUCT_MESSAGE_INFO);
+	if (NULL == new_msg_h) {
+		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create 'new_msg_h'."
+			, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+		return MESSAGES_ERROR_OUT_OF_MEMORY;
+	}
+
 	sendOpt = msg_create_struct(MSG_STRUCT_SENDOPT);
+	if (NULL == sendOpt) {
+		msg_release_struct(&new_msg_h);
+		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create 'sendOpt'."
+			, __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+		return MESSAGES_ERROR_OUT_OF_MEMORY;
+	}
+
 	ret = msg_get_message(_svc->service_h, msg_id, new_msg_h, sendOpt);
 	if (MSG_SUCCESS != ret)
 	{
@@ -1243,7 +1274,7 @@ int messages_search_message_by_id(messages_service_h service, int msg_id, messag
 
 int messages_get_mbox_type(messages_message_h msg, messages_message_box_e *mbox)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	int folder_id;
@@ -1317,7 +1348,7 @@ int messages_mms_get_subject(messages_message_h msg, char **subject)
 	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_MMS_FEATURE);
 
 	int ret;
-	char _subject[MAX_SUBJECT_LEN];
+	char _subject[MAX_SUBJECT_LEN+1] = {0,};
 	messages_message_type_e type;
 
 	messages_message_s *_msg = (messages_message_s*)msg;
@@ -1701,7 +1732,7 @@ int _messages_load_mms_data(messages_message_s *msg, msg_handle_t handle)
 	msg_struct_t mms_media;
 	msg_struct_t mms_attach;
 
-	messages_attachment_s *attach;
+	messages_attachment_s *attach = NULL;
 
 	CHECK_NULL(msg);
 
@@ -1716,7 +1747,16 @@ int _messages_load_mms_data(messages_message_s *msg, msg_handle_t handle)
 
 	// Load MMS_MESSAGE_DATA_S
 	new_msg_h = msg_create_struct(MSG_STRUCT_MESSAGE_INFO);
+	if (new_msg_h == NULL) {
+		return MESSAGES_ERROR_OPERATION_FAILED;
+	}
+
 	sendOpt = msg_create_struct(MSG_STRUCT_SENDOPT);
+	if (sendOpt == NULL) {
+	   	msg_release_struct(&new_msg_h);
+		return MESSAGES_ERROR_OPERATION_FAILED;
+	}
+
 	ret = msg_get_message(handle, msg_id, new_msg_h, sendOpt);
 	if (MSG_SUCCESS != ret)
 	{
@@ -1766,14 +1806,6 @@ int _messages_load_mms_data(messages_message_s *msg, msg_handle_t handle)
 				continue;
 			}
 
-			attach = (messages_attachment_s *)calloc(1, sizeof(messages_attachment_s));
-			if (NULL == attach)
-			{
-				LOGW("[%s] OUT_OF_MEMORY(0x%08x) fail to create a 'attach'."
-					, __FUNCTION__, MESSAGES_ERROR_OUT_OF_MEMORY);
-				break;
-			}
-
 			msg_get_int_value(mms_media, MSG_MMS_MEDIA_TYPE_INT, &media_type);
 			msg_get_str_value(mms_media, MSG_MMS_MEDIA_FILEPATH_STR, filepath, MSG_FILEPATH_LEN_MAX);
 
@@ -1783,6 +1815,14 @@ int _messages_load_mms_data(messages_message_s *msg, msg_handle_t handle)
 			}
 			else
 			{
+				attach = (messages_attachment_s *)calloc(1, sizeof(messages_attachment_s));
+				if (NULL == attach)
+				{
+					LOGW("[%s] OUT_OF_MEMORY(0x%08x) fail to create a 'attach'."
+						, __FUNCTION__, MESSAGES_ERROR_OUT_OF_MEMORY);
+					break;
+				}
+
 				strncpy(attach->filepath, filepath, MSG_FILEPATH_LEN_MAX);
 				switch (media_type)
 				{
@@ -1897,12 +1937,20 @@ int _messages_load_textfile(const char *filepath, char **text)
 	if (NULL == *text)
 	{
 		*text = (char*)calloc(1, st.st_size + 1);
+		if (*text == NULL) {
+			fclose(file);
+			return MESSAGES_ERROR_OPERATION_FAILED;
+		}
 		pos = *text;
 	}
 	else
 	{
 		len = strlen(*text);
 		*text = (char*)realloc(*text, len + st.st_size + 2);
+		if (*text == NULL) {
+			fclose(file);
+			return MESSAGES_ERROR_OPERATION_FAILED;
+		}
 		(*text)[len] = '\n';
 		pos = *text + len + 1;
 	}
