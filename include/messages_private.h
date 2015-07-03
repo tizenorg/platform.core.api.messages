@@ -17,6 +17,14 @@
 #ifndef __TIZEN_MESSAGING_PRIVATE_H__
 #define __TIZEN_MESSAGING_PRIVATE_H__
 
+#include <dlog.h>
+
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
+#define LOG_TAG "CAPI_MESSAGING"
+#define DBG_MODE (1)
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -59,7 +67,7 @@ typedef struct _messages_push_incoming_callback_s {
 #define MESSAGES_PRIVILEGE_READ			"http://tizen.org/privilege/message.read"
 #define MESSAGES_PRIVILEGE_WRITE		"http://tizen.org/privilege/message.write"
 
-#define MESSAGES_TELEPHONY_FEATURE       "http://tizen.org/feature/network.telephony"
+#define MESSAGES_TELEPHONY_SMS_FEATURE       "http://tizen.org/feature/network.telephony.sms"
 #define MESSAGES_TELEPHONY_MMS_FEATURE   "http://tizen.org/feature/network.telephony.mms"
 
 #define ERROR_CONVERT(err) _messages_error_converter(err, __FUNCTION__, __LINE__);

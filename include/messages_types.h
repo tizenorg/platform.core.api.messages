@@ -19,14 +19,6 @@
 
 #include <stdbool.h>
 
-#include <dlog.h>
-
-#ifdef LOG_TAG
-#undef LOG_TAG
-#endif
-#define LOG_TAG "CAPI_MESSAGING"
-#define DBG_MODE (1)
-
 #ifdef __cplusplus
 extern "C"
 {

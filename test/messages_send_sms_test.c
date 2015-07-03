@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <dlog.h>
 
 #include <messages.h>
 
@@ -19,14 +20,14 @@ int main(int argc, char *argv[])
 	// open service
 	ret = messages_open_service(&svc);
 	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_open_service() = %d", ret);
+		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_open_service() = %d", ret);
 		return 1;
 	}
 
 	// create message
 	ret = messages_create_message(MESSAGES_TYPE_SMS, &msg);
 	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_create_message() = %d", ret);
+		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_create_message() = %d", ret);
 		return 1;
 	}
 
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
 	// send message
 	ret = messages_send_message(svc, msg, true, _sent_cb, NULL);
 	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_send_message() = %d", ret);
+		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_send_message() = %d", ret);
 		return 1;
 	}
 
