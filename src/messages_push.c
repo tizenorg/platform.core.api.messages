@@ -55,7 +55,7 @@ void _messages_push_incoming_mediator_cb(msg_handle_t handle, const char *push_h
 int messages_push_add_incoming_cb(messages_service_h service, const char *app_id, 
 					  messages_push_incoming_cb callback, void *user_data)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	messages_push_incoming_callback_s *_cb;
@@ -96,7 +96,7 @@ int messages_push_add_incoming_cb(messages_service_h service, const char *app_id
 
 int messages_push_remove_incoming_cb(messages_service_h service, const char *app_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int i;
 	messages_push_incoming_callback_s *_cb;
@@ -124,7 +124,7 @@ int messages_push_remove_incoming_cb(messages_service_h service, const char *app
 
 int messages_push_register(messages_service_h service, const char *content_type, const char *app_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	
@@ -163,7 +163,7 @@ int messages_push_register(messages_service_h service, const char *content_type,
 
 int messages_push_deregister(messages_service_h service, const char *content_type, const char *app_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	
@@ -203,7 +203,7 @@ int messages_push_deregister(messages_service_h service, const char *content_typ
 int messages_push_reregister(messages_service_h service, const char *content_type, const char *app_id,
 							 const char *dst_content_type, const char *dst_app_id)
 {
-	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_FEATURE);
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
 	int ret;
 	
@@ -248,6 +248,3 @@ int messages_push_reregister(messages_service_h service, const char *content_typ
 	
 	return MESSAGES_ERROR_NONE;
 }
-
-
-

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <dlog.h>
 
 #include <glib.h>
 
@@ -20,7 +21,7 @@ static void sig_quit(int signo)
 
 void _sent_cb(messages_sending_result_e result, void *user_data)
 {
-	printf("sending result=%d\n", (int)result);
+	dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "sending result=%d\n", (int)result);
 }
 
 int main(int argc, char *argv[])
@@ -38,14 +39,14 @@ int main(int argc, char *argv[])
 	// open service
 	ret = messages_open_service(&svc);
 	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_open_service() = %d", ret);
+		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_open_service() = %d", ret);
 		return 1;
 	}
 
 	// create message
 	ret = messages_create_message(MESSAGES_TYPE_MMS, &msg);
 	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_create_message() = %d", ret);
+		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_create_message() = %d", ret);
 		return 1;
 	}
 
@@ -57,12 +58,12 @@ int main(int argc, char *argv[])
 //	messages_mms_add_attachment(msg, MESSAGES_MEDIA_IMAGE, "/opt/etc/msg-service/P091120_104633.jpg");
 	messages_mms_add_attachment(msg, MESSAGES_MEDIA_IMAGE, "/opt/media/Images/image2.jpg");
 	
-	printf("Before Sending\n");
+	dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "Before Sending\n");
 	
 	// send message
 	ret = messages_send_message(svc, msg, true, _sent_cb, NULL);
 	if (MESSAGES_ERROR_NONE != ret) {
-		printf("error: messages_send_message() = %d", ret);
+		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_send_message() = %d", ret);
 		return 1;
 	}
 

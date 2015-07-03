@@ -43,6 +43,7 @@
  * @section CAPI_MESSAGING_MESSAGES_MODULE_FEATURE Related Features
  * This API is related with the following features:\n
  *  - http://tizen.org/feature/network.telephony\n
+ *  - http://tizen.org/feature/network.telephony.sms\n
  *  - http://tizen.org/feature/network.telephony.mms\n
  *
  * It is recommended to design feature related codes in your application for reliability.\n
@@ -77,6 +78,7 @@
  * @section CAPI_MESSAGING_MESSAGES_MMS_MODULE_FEATURE Related Features
  * This API is related with the following features:\n
  *  - http://tizen.org/feature/network.telephony\n
+ *  - http://tizen.org/feature/network.telephony.sms\n
  *  - http://tizen.org/feature/network.telephony.mms\n
  *
  * It is recommended to design feature related codes in your application for reliability.\n
@@ -109,6 +111,7 @@
  * @section CAPI_MESSAGING_MESSAGES_PUSH_MODULE_FEATURE Related Features
  * This API is related with the following features:\n
  *  - http://tizen.org/feature/network.telephony\n
+ *  - http://tizen.org/feature/network.telephony.sms\n
  *
  * It is recommended to design feature related codes in your application for reliability.\n
  *
