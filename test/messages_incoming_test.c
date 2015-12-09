@@ -16,10 +16,8 @@ static GMainLoop *mainloop;
 
 static void sig_quit(int signo)
 {
-        if(mainloop)
-        {
-                g_main_loop_quit(mainloop);
-        }
+	if (mainloop)
+		g_main_loop_quit(mainloop);
 }
 
 void incoming_cb(messages_message_h msg, void *user_data)
@@ -35,7 +33,7 @@ void incoming_cb(messages_message_h msg, void *user_data)
 	dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "Incoming Message\n");
 
 	messages_get_address_count(msg, &nAddr);
-	for (i=0; i < nAddr; i++) {
+	for (i = 0; i < nAddr; i++) {
 		ret = messages_get_address(msg, i, &addr, NULL);
 		if (MESSAGES_ERROR_NONE == ret) {
 			dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "Address[%d]: %s\n", i, addr);
@@ -51,9 +49,8 @@ void incoming_cb(messages_message_h msg, void *user_data)
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "%d: error, ret=%d\n", __LINE__, ret);
 	}
 
-	
 	messages_get_message_type(msg, &msgType);
-	switch(msgType) {
+	switch (msgType) {
 	case MESSAGES_TYPE_SMS:
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "Type: SMS\n");
 		break;
@@ -64,17 +61,14 @@ void incoming_cb(messages_message_h msg, void *user_data)
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "Type: Unknown\n");
 		break;
 	}
-	
+
 	messages_get_time(msg, &time);
 	char buf[50];
 	if (ctime_r(&time, buf))
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "Time: %d, %s", (int)time, ctime_r(&time, buf));
 
 	gmtime_r(&time, &ptm);
-	dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "gmtime test: %d.%d.%d %d:%d:%d \n",
-			ptm.tm_year, ptm.tm_mon, ptm.tm_mday,
-			ptm.tm_hour, ptm.tm_min, ptm.tm_sec
-	);
+	dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "gmtime test: %d.%d.%d %d:%d:%d \n", ptm.tm_year, ptm.tm_mon, ptm.tm_mday, ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
 }
 
 int main(int argc, char *argv[])
@@ -82,24 +76,20 @@ int main(int argc, char *argv[])
 	int ret;
 	messages_service_h svc;
 
-
-        signal(SIGINT, sig_quit);
-        signal(SIGTERM, sig_quit);
-        signal(SIGQUIT, sig_quit);
+	signal(SIGINT, sig_quit);
+	signal(SIGTERM, sig_quit);
+	signal(SIGQUIT, sig_quit);
 	mainloop = g_main_loop_new(NULL, FALSE);
 
 	ret = messages_open_service(&svc);
 	ERROR_CHECK(ret);
 
-
 	messages_set_message_incoming_cb(svc, incoming_cb, NULL);
 
-        g_main_loop_run(mainloop);
-        g_main_loop_unref(mainloop);
+	g_main_loop_run(mainloop);
+	g_main_loop_unref(mainloop);
 
 	messages_close_service(svc);
 
-
 	return 0;
 }
-

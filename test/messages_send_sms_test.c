@@ -17,14 +17,13 @@ int main(int argc, char *argv[])
 	messages_service_h svc;
 	messages_message_h msg;
 
-	// open service
+	/* open service */
 	ret = messages_open_service(&svc);
 	if (MESSAGES_ERROR_NONE != ret) {
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_open_service() = %d", ret);
 		return 1;
 	}
-
-	// create message
+	/* create message */
 	ret = messages_create_message(MESSAGES_TYPE_SMS, &msg);
 	if (MESSAGES_ERROR_NONE != ret) {
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_create_message() = %d", ret);
@@ -33,18 +32,16 @@ int main(int argc, char *argv[])
 
 	messages_add_address(msg, TEST_NUMBER, MESSAGES_RECIPIENT_TO);
 	messages_set_text(msg, "This is simple message!");
-	
-	// send message
+
+	/* send message */
 	ret = messages_send_message(svc, msg, true, _sent_cb, NULL);
 	if (MESSAGES_ERROR_NONE != ret) {
 		dlog_print(DLOG_DEBUG, "MESSAGE_TEST", "error: messages_send_message() = %d", ret);
 		return 1;
 	}
-
-	// destroy
+	/* destroy */
 	messages_destroy_message(msg);
-	messages_close_service(svc);	
-
+	messages_close_service(svc);
 
 	return 0;
 }
