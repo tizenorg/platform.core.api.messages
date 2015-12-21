@@ -275,7 +275,7 @@ int messages_add_address(messages_message_h msg, const char *address, messages_r
 		return MESSAGES_ERROR_INVALID_PARAMETER;
 	}
 
-	ret = msg_set_str_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_VALUE_STR, (char *)address, strlen(address));
+	ret = msg_set_str_value(addr_info, MSG_ADDRESS_INFO_ADDRESS_VALUE_STR, address, strlen(address));
 	if (MSG_SUCCESS != ret)
 		return ERROR_CONVERT(ret);
 
@@ -579,10 +579,10 @@ int messages_search_message(messages_service_h service, messages_message_box_e m
 	msg_set_int_value(listCond, MSG_LIST_CONDITION_MSGTYPE_INT, _messages_convert_msgtype_to_fw(type));
 
 	if (NULL != keyword)
-		msg_set_str_value(listCond, MSG_LIST_CONDITION_TEXT_VALUE_STR, strdup(keyword), strlen(keyword));
+		msg_set_str_value(listCond, MSG_LIST_CONDITION_TEXT_VALUE_STR, keyword, strlen(keyword));
 
 	if (NULL != address)
-		msg_set_str_value(listCond, MSG_LIST_CONDITION_ADDRESS_VALUE_STR, strdup(address), strlen(address));
+		msg_set_str_value(listCond, MSG_LIST_CONDITION_ADDRESS_VALUE_STR, address, strlen(address));
 
 	/* Search */
 	msg_set_bool_value(listCond, MSG_LIST_CONDITION_AND_OPERATER_BOOL, true);
@@ -872,7 +872,7 @@ int messages_set_text(messages_message_h msg, const char *text)
 			LOGE("[%s] INVALID_PARAMETER(0x%08x) : the length of body exceeded the max, 1530 .", __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
 			return MESSAGES_ERROR_INVALID_PARAMETER;
 		}
-		ret = ERROR_CONVERT(msg_set_str_value(_msg->msg_h, MSG_MESSAGE_SMS_DATA_STR, (char *)text, len));
+		ret = ERROR_CONVERT(msg_set_str_value(_msg->msg_h, MSG_MESSAGE_SMS_DATA_STR, text, len));
 	} else if (IS_MMS(type)) {
 		CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_MMS_FEATURE);
 
@@ -1150,7 +1150,7 @@ int messages_mms_set_subject(messages_message_h msg, const char *subject)
 		return MESSAGES_ERROR_INVALID_PARAMETER;
 	}
 
-	ret = msg_set_str_value(_msg->msg_h, MSG_MESSAGE_SUBJECT_STR, (char *)subject, strlen(subject));
+	ret = msg_set_str_value(_msg->msg_h, MSG_MESSAGE_SUBJECT_STR, subject, strlen(subject));
 
 	return ERROR_CONVERT(ret);
 }
@@ -1364,7 +1364,7 @@ int _messages_save_mms_data(messages_message_s * msg)
 
 	if (NULL == image) {
 		msg_list_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
-		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Text", 4);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, "Text", 4);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
@@ -1372,7 +1372,7 @@ int _messages_save_mms_data(messages_message_s * msg)
 		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);
 	} else if (NULL == msg->text) {
 		msg_list_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
-		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Image", 5);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, "Image", 5);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
@@ -1380,7 +1380,7 @@ int _messages_save_mms_data(messages_message_s * msg)
 		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);
 	} else {
 		msg_list_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
-		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Image", 5);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, "Image", 5);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
@@ -1388,7 +1388,7 @@ int _messages_save_mms_data(messages_message_s * msg)
 		msg_set_int_value(region, MSG_MMS_REGION_BGCOLOR_INT, 0xffffff);
 
 		msg_list_add_item(mms_data, MSG_STRUCT_MMS_REGION, &region);
-		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, (char *)"Text", 4);
+		msg_set_str_value(region, MSG_MMS_REGION_ID_STR, "Text", 4);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_LEFT_INT, 0);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_TOP_INT, 50);
 		msg_set_int_value(region, MSG_MMS_REGION_LENGTH_WIDTH_INT, 100);
@@ -1404,13 +1404,13 @@ int _messages_save_mms_data(messages_message_s * msg)
 		if (MESSAGES_MEDIA_IMAGE == image->media_type) {
 			msg_list_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
 			msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_IMG);
-			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Image", 5);
-			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)image->filepath, MSG_FILEPATH_LEN_MAX);
+			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, "Image", 5);
+			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (const char *)image->filepath, MSG_FILEPATH_LEN_MAX);
 		} else if (MESSAGES_MEDIA_VIDEO == image->media_type) {
 			msg_list_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
 			msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_VIDEO);
-			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Image", 5);
-			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)image->filepath, MSG_FILEPATH_LEN_MAX);
+			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, "Image", 5);
+			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (const char *)image->filepath, MSG_FILEPATH_LEN_MAX);
 		}
 	}
 
@@ -1418,7 +1418,7 @@ int _messages_save_mms_data(messages_message_s * msg)
 		msg_list_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
 		msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_AUDIO);
 		msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Audio", 5);
-		msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)audio->filepath, MSG_FILEPATH_LEN_MAX);
+		msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (const char *)audio->filepath, MSG_FILEPATH_LEN_MAX);
 	}
 
 	if (NULL != msg->text) {
@@ -1426,8 +1426,8 @@ int _messages_save_mms_data(messages_message_s * msg)
 		if (MESSAGES_ERROR_NONE == ret) {
 			msg_list_add_item(page, MSG_STRUCT_MMS_MEDIA, &media);
 			msg_set_int_value(media, MSG_MMS_MEDIA_TYPE_INT, MMS_SMIL_MEDIA_TEXT);
-			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, (char *)"Text", 4);
-			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (char *)filepath, MSG_FILEPATH_LEN_MAX);
+			msg_set_str_value(media, MSG_MMS_MEDIA_REGION_ID_STR, "Text", 4);
+			msg_set_str_value(media, MSG_MMS_MEDIA_FILEPATH_STR, (const char *)filepath, MSG_FILEPATH_LEN_MAX);
 
 			msg_get_struct_handle(media, MSG_MMS_MEDIA_SMIL_TEXT_HND, &smil_text);
 			msg_set_int_value(smil_text, MSG_MMS_SMIL_TEXT_COLOR_INT, 0x000000);
@@ -1443,7 +1443,7 @@ int _messages_save_mms_data(messages_message_s * msg)
 		attach = g_slist_nth_data(msg->attachment_list, i);
 		if (image != attach && audio != attach) {
 			msg_list_add_item(mms_data, MSG_STRUCT_MMS_ATTACH, &mms_attach);
-			msg_set_str_value(mms_attach, MSG_MMS_ATTACH_FILEPATH_STR, (char *)attach->filepath, MSG_FILEPATH_LEN_MAX);
+			msg_set_str_value(mms_attach, MSG_MMS_ATTACH_FILEPATH_STR, (const char *)attach->filepath, MSG_FILEPATH_LEN_MAX);
 		}
 	}
 

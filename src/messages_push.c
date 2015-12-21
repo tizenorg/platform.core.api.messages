@@ -131,9 +131,9 @@ int messages_push_register(messages_service_h service, const char *content_type,
 	}
 
 	push_info = msg_create_struct(MSG_STRUCT_PUSH_CONFIG_INFO);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, (char *)content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, (char *)app_id, MAX_WAPPUSH_ID_LEN);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, pkg_name, MSG_FILEPATH_LEN_MAX);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, app_id, MAX_WAPPUSH_ID_LEN);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, (const char *)pkg_name, MSG_FILEPATH_LEN_MAX);
 	free(pkg_name);
 
 	ret = msg_add_push_event(_svc->service_h, push_info);
@@ -167,9 +167,9 @@ int messages_push_deregister(messages_service_h service, const char *content_typ
 	}
 
 	push_info = msg_create_struct(MSG_STRUCT_PUSH_CONFIG_INFO);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, (char *)content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, (char *)app_id, MAX_WAPPUSH_ID_LEN);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, pkg_name, MSG_FILEPATH_LEN_MAX);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, app_id, MAX_WAPPUSH_ID_LEN);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, (const char *)pkg_name, MSG_FILEPATH_LEN_MAX);
 	free(pkg_name);
 
 	ret = msg_delete_push_event(_svc->service_h, push_info);
@@ -206,14 +206,14 @@ int messages_push_reregister(messages_service_h service, const char *content_typ
 	}
 
 	push_info = msg_create_struct(MSG_STRUCT_PUSH_CONFIG_INFO);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, (char *)content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, (char *)app_id, MAX_WAPPUSH_ID_LEN);
-	msg_set_str_value(push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, pkg_name, MSG_FILEPATH_LEN_MAX);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, app_id, MAX_WAPPUSH_ID_LEN);
+	msg_set_str_value(push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, (const char *)pkg_name, MSG_FILEPATH_LEN_MAX);
 
 	dst_push_info = msg_create_struct(MSG_STRUCT_PUSH_CONFIG_INFO);
-	msg_set_str_value(dst_push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, (char *)dst_content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
-	msg_set_str_value(dst_push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, (char *)dst_app_id, MAX_WAPPUSH_ID_LEN);
-	msg_set_str_value(dst_push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, pkg_name, MSG_FILEPATH_LEN_MAX);
+	msg_set_str_value(dst_push_info, MSG_PUSH_CONFIG_CONTENT_TYPE_STR, dst_content_type, MAX_WAPPUSH_CONTENT_TYPE_LEN);
+	msg_set_str_value(dst_push_info, MSG_PUSH_CONFIG_APPLICATON_ID_STR, dst_app_id, MAX_WAPPUSH_ID_LEN);
+	msg_set_str_value(dst_push_info, MSG_PUSH_CONFIG_PACKAGE_NAME_STR, (const char *)pkg_name, MSG_FILEPATH_LEN_MAX);
 	free(pkg_name);
 
 	ret = msg_update_push_event(_svc->service_h, push_info, dst_push_info);
