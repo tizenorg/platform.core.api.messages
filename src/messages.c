@@ -24,6 +24,7 @@
 #include <glib.h>
 
 #include <privacy_checker_client.h>
+#include <mime_type.h>
 
 #include <msg.h>
 #include <msg_transport.h>
@@ -1677,26 +1678,52 @@ int _messages_get_media_type_from_filepath(const char *filepath)
 	int len;
 	int ret;
 	char *file_ext;
+	char *mime_type = NULL;
 
 	if (NULL == filepath)
+	{
 		return MESSAGES_MEDIA_UNKNOWN;
-
-	/* check the length of filepath */
+	}
+	// check the length of filepath
 	len = strlen(filepath);
 	if (len < 5)
+	{
 		return MESSAGES_MEDIA_UNKNOWN;
+	}
 
-	/* check extension of file */
-	file_ext = (char *)&filepath[len - 4];
+	// check extension of file
+	file_ext = strrchr(filepath, '.');
+	if (file_ext == NULL)
+	{
+		return MESSAGES_MEDIA_UNKNOWN;
+	}
 
-	if (strncmp(file_ext, ".jpg", 4) != 0 && strncmp(file_ext, ".gif", 4) != 0 && strncmp(file_ext, ".bmp", 4) != 0 && strncmp(file_ext, ".png", 4) != 0)
+	file_ext++;
+
+	mime_type_get_mime_type(file_ext, &mime_type);
+	if (mime_type == NULL)
+	{
+		return MESSAGES_MEDIA_UNKNOWN;
+	}
+
+	if (g_str_has_prefix(mime_type, "image"))
+	{
 		ret = MESSAGES_MEDIA_IMAGE;
-	else if (strncmp(file_ext, ".mp4", 4) != 0 && strncmp(file_ext, ".3gp", 4) != 0)
+	}
+	else if (g_str_has_prefix(mime_type, "video"))
+	{
 		ret = MESSAGES_MEDIA_VIDEO;
-	else if (strncmp(file_ext, ".mid", 4) != 0 && strncmp(file_ext, ".aac", 4) != 0 && strncmp(file_ext, ".amr", 4) != 0)
+	}
+	else if (g_str_has_prefix(mime_type, "audio"))
+	{
 		ret = MESSAGES_MEDIA_AUDIO;
+	}
 	else
+	{
 		ret = MESSAGES_MEDIA_UNKNOWN;
+	}
+
+	g_free(mime_type);
 
 	return ret;
 }
