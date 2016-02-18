@@ -10,7 +10,7 @@ SET(PREFIX ${CMAKE_INSTALL_PREFIX})
 SET(INC_DIR include)
 INCLUDE_DIRECTORIES(${INC_DIR})
 
-SET(dependents "dlog glib-2.0 msg-service capi-base-common capi-appfw-application capi-system-info privacy-manager-client")
+SET(dependents "dlog glib-2.0 msg-service capi-base-common capi-appfw-application capi-content-mime-type capi-system-info privacy-manager-client")
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(${fw_name} REQUIRED ${dependents})
