@@ -23,7 +23,6 @@
 
 #include <glib.h>
 
-#include <privacy_checker_client.h>
 #include <mime_type.h>
 
 #include <msg.h>
@@ -395,11 +394,6 @@ int messages_send_message(messages_service_h svc, messages_message_h msg, bool s
 {
 	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
 
-	/* Privacy check */
-	int privacy_ret = privacy_checker_check_by_privilege(MESSAGES_PRIVILEGE_WRITE);
-	if (privacy_ret == PRIV_MGR_ERROR_USER_NOT_CONSENTED)
-		return MESSAGES_ERROR_PERMISSION_DENIED;
-
 	int ret;
 	int reqId;
 	msg_struct_t req;
@@ -666,11 +660,6 @@ int messages_free_message_array(messages_message_h * message_array)
 int messages_foreach_message(messages_service_h svc, messages_message_box_e mbox, messages_message_type_e type, const char *keyword, const char *address, int offset, int limit, messages_search_cb callback, void *user_data)
 {
 	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
-
-	/* Privacy check */
-	int privacy_ret = privacy_checker_check_by_privilege(MESSAGES_PRIVILEGE_READ);
-	if (privacy_ret == PRIV_MGR_ERROR_USER_NOT_CONSENTED)
-		return MESSAGES_ERROR_PERMISSION_DENIED;
 
 	int i;
 	int ret;

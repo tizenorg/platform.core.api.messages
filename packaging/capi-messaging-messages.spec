@@ -17,7 +17,6 @@ BuildRequires: pkgconfig(capi-base-common)
 BuildRequires: pkgconfig(capi-appfw-application)
 BuildRequires: pkgconfig(capi-content-mime-type)
 BuildRequires: pkgconfig(capi-system-info)
-BuildRequires: pkgconfig(privacy-manager-client)
 Requires(post): /sbin/ldconfig  
 Requires(postun): /sbin/ldconfig
 
