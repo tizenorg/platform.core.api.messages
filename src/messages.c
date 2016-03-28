@@ -255,6 +255,7 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e * 
 		return ERROR_CONVERT(ret);
 
 	switch (msgType) {
+//LCOV_EXCL_START
 	case MSG_TYPE_SMS_CB:
 	case MSG_TYPE_SMS_JAVACB:
 		*type = MESSAGES_TYPE_SMS_CB;
@@ -262,6 +263,7 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e * 
 	case MSG_TYPE_SMS_WAPPUSH:
 		*type = MESSAGES_TYPE_SMS_PUSH;
 		break;
+//LCOV_EXCL_STOP
 	case MSG_TYPE_SMS:
 	case MSG_TYPE_SMS_MWI:
 	case MSG_TYPE_SMS_SYNCML:
@@ -273,9 +275,11 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e * 
 	case MSG_TYPE_MMS_JAVA:
 		*type = MESSAGES_TYPE_MMS;
 		break;
+//LCOV_EXCL_START
 	default:
 		*type = MESSAGES_TYPE_UNKNOWN;
 		break;
+//LCOV_EXCL_STOP
 	}
 
 	return MESSAGES_ERROR_NONE;
@@ -732,6 +736,7 @@ int messages_foreach_message(messages_service_h svc, messages_message_box_e mbox
 	return MESSAGES_ERROR_NONE;
 }
 
+//LCOV_EXCL_START
 void _messages_sent_mediator_cb(msg_handle_t handle, msg_struct_t pStatus, void *user_param)
 {
 	messages_sending_result_e ret;
@@ -796,6 +801,7 @@ void _messages_incoming_mediator_cb(msg_handle_t handle, msg_struct_t msg, void 
 		free(_msg);
 	}
 }
+//LCOV_EXCL_STOP
 
 int messages_set_message_incoming_cb(messages_service_h svc, messages_incoming_cb callback, void *user_data)
 {
@@ -1855,6 +1861,7 @@ int _messages_convert_recipient_to_fw(messages_recipient_type_e type)
 int _messages_error_converter(int err, const char *func, int line)
 {
 	switch (err) {
+//LCOV_EXCL_START
 	case MSG_ERR_NULL_POINTER:
 		LOGE("[%s:%d] NULL_POINTER(0x%08x) : Error from internal Messaging F/W ret: %d.", func, line, MESSAGES_ERROR_INVALID_PARAMETER, err);
 		return MESSAGES_ERROR_INVALID_PARAMETER;
@@ -1889,14 +1896,14 @@ int _messages_error_converter(int err, const char *func, int line)
 
 	case MSG_ERR_PERMISSION_DENIED:
 		return MESSAGES_ERROR_PERMISSION_DENIED;
-
+//LCOV_EXCL_STOP
 	case MSG_SUCCESS:
 		return MESSAGES_ERROR_NONE;
-
+//LCOV_EXCL_START
 	default:
 		LOGE("[%s:%d] OPERATION_FAILED(0x%08x) : Error from internal Messaging F/W ret: %d.", func, line, MESSAGES_ERROR_OPERATION_FAILED, err);
 		return MESSAGES_ERROR_OPERATION_FAILED;
-
+//LCOV_EXCL_STOP
 	}
 }
 
