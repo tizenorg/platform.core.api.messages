@@ -39,6 +39,7 @@
 #endif
 #define LOG_TAG "CAPI_MESSAGING"
 
+//LCOV_EXCL_START
 void _messages_push_incoming_mediator_cb(msg_handle_t handle, const char *push_header, const char *push_body, int push_body_len, void *user_param)
 {
 	messages_push_incoming_callback_s *_cb = (messages_push_incoming_callback_s *) user_param;
@@ -46,6 +47,7 @@ void _messages_push_incoming_mediator_cb(msg_handle_t handle, const char *push_h
 	if (_cb && _cb->callback)
 		((messages_push_incoming_cb) _cb->callback) (push_header, push_body, push_body_len, _cb->user_data);
 }
+//LCOV_EXCL_STOP
 
 int messages_push_add_incoming_cb(messages_service_h service, const char *app_id, messages_push_incoming_cb callback, void *user_data)
 {
