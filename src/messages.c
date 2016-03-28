@@ -254,6 +254,7 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e * 
 	if (ret != MSG_SUCCESS)
 		return ERROR_CONVERT(ret);
 
+	//LCOV_EXCL_START
 	switch (msgType) {
 	case MSG_TYPE_SMS_CB:
 	case MSG_TYPE_SMS_JAVACB:
@@ -277,6 +278,7 @@ int messages_get_message_type(messages_message_h msg, messages_message_type_e * 
 		*type = MESSAGES_TYPE_UNKNOWN;
 		break;
 	}
+	//LCOV_EXCL_STOP
 
 	return MESSAGES_ERROR_NONE;
 }
@@ -391,6 +393,7 @@ int messages_get_address(messages_message_h msg, int index, char **address, mess
 		if (MSG_SUCCESS != ret) {
 			*type = MESSAGES_RECIPIENT_UNKNOWN;
 		} else {
+			//LCOV_EXCL_START
 			switch (_type) {
 			case MSG_RECIPIENTS_TYPE_TO:
 				*type = MESSAGES_RECIPIENT_TO;
@@ -405,6 +408,7 @@ int messages_get_address(messages_message_h msg, int index, char **address, mess
 				*type = MESSAGES_RECIPIENT_UNKNOWN;
 				break;
 			}
+			//LCOV_EXCL_STOP
 		}
 	}
 
@@ -567,6 +571,7 @@ int messages_get_message_count(messages_service_h service, messages_message_box_
 
 		msg_release_struct(&countInfo);
 
+		//LCOV_EXCL_START
 		switch (type) {
 		case MESSAGES_TYPE_SMS:
 			*count = nSms;
@@ -581,6 +586,7 @@ int messages_get_message_count(messages_service_h service, messages_message_box_
 			*count = 0;
 			break;
 		}
+		//LCOV_EXCL_STOP
 	}
 
 	return MESSAGES_ERROR_NONE;
@@ -730,6 +736,7 @@ int messages_foreach_message(messages_service_h svc, messages_message_box_e mbox
 	return MESSAGES_ERROR_NONE;
 }
 
+//LCOV_EXCL_START
 void _messages_sent_mediator_cb(msg_handle_t handle, msg_struct_t pStatus, void *user_param)
 {
 	messages_sending_result_e ret;
@@ -794,6 +801,7 @@ void _messages_incoming_mediator_cb(msg_handle_t handle, msg_struct_t msg, void 
 		free(_msg);
 	}
 }
+//LCOV_EXCL_STOP
 
 int messages_set_message_incoming_cb(messages_service_h svc, messages_incoming_cb callback, void *user_data)
 {
@@ -1184,6 +1192,7 @@ int messages_get_mbox_type(messages_message_h msg, messages_message_box_e * mbox
 	if (MSG_SUCCESS != ret)
 		return ERROR_CONVERT(ret);
 
+//LCOV_EXCL_START
 	switch (folder_id) {
 	case MSG_INBOX_ID:
 		*mbox = MESSAGES_MBOX_INBOX;
@@ -1201,6 +1210,7 @@ int messages_get_mbox_type(messages_message_h msg, messages_message_box_e * mbox
 		*mbox = MESSAGES_MBOX_ALL;
 		break;
 	}
+//LCOV_EXCL_STOP
 
 	return MESSAGES_ERROR_NONE;
 }
@@ -1628,6 +1638,7 @@ int _messages_load_mms_data(messages_message_s * msg, msg_handle_t handle)
 				}
 
 				strncpy(attach->filepath, filepath, MSG_FILEPATH_LEN_MAX);
+				//LCOV_EXCL_START
 				switch (media_type) {
 				case MMS_SMIL_MEDIA_IMG:
 					attach->media_type = MESSAGES_MEDIA_IMAGE;
@@ -1641,6 +1652,7 @@ int _messages_load_mms_data(messages_message_s * msg, msg_handle_t handle)
 				default:
 					attach->media_type = MESSAGES_MEDIA_UNKNOWN;
 				}
+				//LCOV_EXCL_STOP
 
 				msg->attachment_list = g_slist_append(msg->attachment_list, attach);
 			}
@@ -1793,6 +1805,7 @@ int _messages_get_media_type_from_filepath(const char *filepath)
 int _messages_convert_mbox_to_fw(messages_message_box_e mbox)
 {
 	int folderId;
+	//LCOV_EXCL_START
 	switch (mbox) {
 	case MESSAGES_MBOX_INBOX:
 		folderId = MSG_INBOX_ID;
@@ -1810,12 +1823,14 @@ int _messages_convert_mbox_to_fw(messages_message_box_e mbox)
 		folderId = MSG_ALLBOX_ID;
 		break;
 	}
+	//LCOV_EXCL_STOP
 	return folderId;
 }
 
 int _messages_convert_msgtype_to_fw(messages_message_type_e type)
 {
 	int msgType;
+	//LCOV_EXCL_START
 	switch (type) {
 	case MESSAGES_TYPE_SMS:
 		msgType = MSG_TYPE_SMS;
@@ -1827,12 +1842,14 @@ int _messages_convert_msgtype_to_fw(messages_message_type_e type)
 		msgType = MSG_TYPE_INVALID;
 		break;
 	}
+	//LCOV_EXCL_STOP
 	return msgType;
 }
 
 int _messages_convert_recipient_to_fw(messages_recipient_type_e type)
 {
 	int ret;
+	//LCOV_EXCL_START
 	switch (type) {
 	case MESSAGES_RECIPIENT_TO:
 		ret = MSG_RECIPIENTS_TYPE_TO;
@@ -1847,9 +1864,11 @@ int _messages_convert_recipient_to_fw(messages_recipient_type_e type)
 		ret = MSG_RECIPIENTS_TYPE_UNKNOWN;
 		break;
 	}
+	//LCOV_EXCL_STOP
 	return ret;
 }
 
+//LCOV_EXCL_START
 int _messages_error_converter(int err, const char *func, int line)
 {
 	switch (err) {
@@ -1897,6 +1916,7 @@ int _messages_error_converter(int err, const char *func, int line)
 
 	}
 }
+//LCOV_EXCL_STOP
 
 int _messages_check_feature(char *feature_name)
 {
