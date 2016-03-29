@@ -48,8 +48,8 @@ typedef struct _messages_message_s {
 } messages_message_s;
 
 typedef struct _messages_attachment_s {
-    int          media_type;
-    char         filepath[MSG_FILEPATH_LEN_MAX +1];
+	int          media_type;
+	char         filepath[MSG_FILEPATH_LEN_MAX +1];
 } messages_attachment_s;
 
 typedef struct _messages_sent_callback_s {
@@ -93,7 +93,7 @@ typedef struct _messages_push_incoming_callback_s {
 			LOGE("Error - Feature getting from System Info"); \
 			return MESSAGES_ERROR_OPERATION_FAILED; \
 		} \
-	} while(0)
+	} while (0)
 
 int _messages_convert_mbox_to_fw(messages_message_box_e mbox);
 int _messages_convert_msgtype_to_fw(messages_message_type_e type);

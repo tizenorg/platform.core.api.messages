@@ -123,7 +123,7 @@ typedef enum {
  *
  * @see messages_send_message()
  */
-typedef void (* messages_sent_cb)(messages_sending_result_e result, void *user_data);
+typedef void (*messages_sent_cb)(messages_sending_result_e result, void *user_data);
 
 
 /**
@@ -138,7 +138,7 @@ typedef void (* messages_sent_cb)(messages_sending_result_e result, void *user_d
  * @see messages_set_message_incoming_cb()
  * @see messages_unset_message_incoming_cb()
  */
-typedef void (* messages_incoming_cb)(messages_message_h incoming_msg, void *user_data);
+typedef void (*messages_incoming_cb)(messages_message_h incoming_msg, void *user_data);
 
 
 /**
@@ -164,7 +164,7 @@ typedef void (* messages_incoming_cb)(messages_message_h incoming_msg, void *use
  *
  * @see messages_foreach_message()
  */
-typedef bool (* messages_search_cb)(messages_message_h msg, int index, int result_count, int total_count, void *user_data);
+typedef bool (*messages_search_cb)(messages_message_h msg, int index, int result_count, int total_count, void *user_data);
 
 
  /**
@@ -187,7 +187,7 @@ typedef bool (* messages_search_cb)(messages_message_h msg, int index, int resul
  * @see messages_push_set_incoming_cb()
  * @see messages_push_unset_incoming_cb()
  */
-typedef void (* messages_push_incoming_cb)(const char *header, const char *body, int body_length, void *user_data);
+typedef void (*messages_push_incoming_cb)(const char *header, const char *body, int body_length, void *user_data);
 
 /**
  * @}
