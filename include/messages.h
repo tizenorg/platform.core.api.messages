@@ -130,6 +130,32 @@ int messages_create_message(messages_message_type_e type, messages_message_h *ms
  */
 int messages_destroy_message(messages_message_h msg);
 
+
+/**
+ * @brief Adds the message to message database.
+ *
+ * @since_tizen 3.0
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/message.write
+ *
+ * @param[in] service         The message service handle
+ * @param[in] msg             The message handle
+ * @param[out] msg_id         The message ID of added message
+ *
+ * @return @c 0 on success,
+ *       otherwise a negative error value
+ *
+ * @retval #MESSAGES_ERROR_NONE              Successful
+ * @retval #MESSAGES_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #MESSAGES_ERROR_OPERATION_FAILED  Messaging operation failed
+ * @retval #MESSAGES_ERROR_PERMISSION_DENIED The application does not have the privilege to call this method
+ * @retval #MESSAGES_ERROR_NOT_SUPPORTED     Not supported
+ *
+ * @see messages_create_message()
+ *
+ */
+int messages_add_message(messages_service_h service, messages_message_h msg, int *msg_id);
+
 /**
  * @brief Gets the message ID of the message.
  *
@@ -192,6 +218,22 @@ int messages_set_sim_id(messages_message_h msg, int sim_id);
  */
 int messages_get_sim_id(messages_message_h msg, int *sim_id);
 
+/**
+ * @brief Sets the message box type of the message.
+ *
+ * @since_tizen 3.0
+ *
+ * @param[in]  msg   The message handle
+ * @param[in]  mbox  The message box type
+ *
+ * @return @c 0 on success,
+ *       otherwise a negative error value
+ *
+ * @retval #MESSAGES_ERROR_NONE               Successful
+ * @retval #MESSAGES_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #MESSAGES_ERROR_NOT_SUPPORTED      Not supported
+ */
+int messages_set_mbox_type(messages_message_h msg, messages_message_box_e mbox);
 
 /**
  * @brief Gets the message box type of the message.
@@ -382,6 +424,22 @@ int messages_set_text(messages_message_h msg, const char *text);
  */
 int messages_get_text(messages_message_h msg, char **text);
 
+/**
+ * @brief Sets the time of the message.
+ *
+ * @since_tizen 3.0
+ *
+ * @param[in]  msg   The message handle
+ * @param[in]  time  The time of the message
+ *
+ * @return @c 0 on success,
+ *       otherwise a negative error value
+ *
+ * @retval #MESSAGES_ERROR_NONE               Successful
+ * @retval #MESSAGES_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #MESSAGES_ERROR_NOT_SUPPORTED      Not supported
+ */
+int messages_set_time(messages_message_h msg, time_t time);
 
 /**
  * @brief Gets the time of the message.

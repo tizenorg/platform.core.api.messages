@@ -197,6 +197,47 @@ int messages_destroy_message(messages_message_h msg)
 	return ERROR_CONVERT(ret);
 }
 
+
+int messages_add_message(messages_service_h svc, messages_message_h msg, int *msg_id)
+{
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
+
+	int ret;
+
+	messages_message_s *_msg = (messages_message_s *) msg;
+	messages_service_s *_svc = (messages_service_s *) svc;
+
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+	CHECK_NULL(_svc);
+	CHECK_NULL(_svc->service_h);
+	CHECK_NULL(msg_id);
+
+	int in_msg_id = 0;
+	ret = msg_get_int_value(_msg->msg_h, MSG_MESSAGE_ID_INT, &in_msg_id);
+	if (ret != MSG_SUCCESS)
+		return ERROR_CONVERT(ret);
+
+	if (in_msg_id > 0)
+		return MESSAGES_ERROR_INVALID_PARAMETER;
+
+	msg_struct_t sendopt = msg_create_struct(MSG_STRUCT_SENDOPT);
+
+	ret = msg_add_message(_svc->service_h, _msg->msg_h, sendopt);
+
+	msg_release_struct(&sendopt);
+
+	if (ret > 0) {
+		*msg_id = ret;
+		ret = MSG_SUCCESS;
+	} else {
+		*msg_id = 0;
+		ret = MSG_ERR_INVALID_MESSAGE_ID;
+	}
+
+	return ERROR_CONVERT(ret);
+}
+
 int messages_get_message_type(messages_message_h msg, messages_message_type_e * type)
 {
 	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
@@ -930,6 +971,23 @@ int messages_get_text(messages_message_h msg, char **text)
 	return MESSAGES_ERROR_NONE;
 }
 
+int messages_set_time(messages_message_h msg, time_t time)
+{
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
+
+	int ret;
+
+	messages_message_s *_msg = (messages_message_s *) msg;
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+
+	ret = msg_set_int_value(_msg->msg_h, MSG_MESSAGE_DISPLAY_TIME_INT, (int)time);
+	if (MSG_SUCCESS != ret)
+		return ERROR_CONVERT(ret);
+
+	return MESSAGES_ERROR_NONE;
+}
+
 int messages_get_time(messages_message_h msg, time_t * time)
 {
 	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
@@ -1081,6 +1139,32 @@ int messages_search_message_by_id(messages_service_h service, int msg_id, messag
 	return MESSAGES_ERROR_NONE;
 }
 
+int messages_set_mbox_type(messages_message_h msg, messages_message_box_e mbox)
+{
+	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
+
+	int ret;
+	int folder_id;
+
+	messages_message_s *_msg = (messages_message_s *) msg;
+	CHECK_NULL(_msg);
+	CHECK_NULL(_msg->msg_h);
+
+	folder_id = _messages_convert_mbox_to_fw(mbox);
+	LOGE("folder ID = [%d]", folder_id);
+
+	if (folder_id < MSG_INBOX_ID || folder_id > MSG_DRAFT_ID) {
+		LOGE("[%s] INVALID_PARAMETER(0x%08x) : the message box should be valid mbox id", __FUNCTION__, MESSAGES_ERROR_INVALID_PARAMETER);
+		return MESSAGES_ERROR_INVALID_PARAMETER;
+	}
+
+	ret = msg_set_int_value(_msg->msg_h, MSG_MESSAGE_FOLDER_ID_INT, folder_id);
+	if (MSG_SUCCESS != ret)
+		return ERROR_CONVERT(ret);
+
+	return MESSAGES_ERROR_NONE;
+}
+
 int messages_get_mbox_type(messages_message_h msg, messages_message_box_e * mbox)
 {
 	CHECK_MESSAGES_SUPPORTED(MESSAGES_TELEPHONY_SMS_FEATURE);
@@ -1117,6 +1201,7 @@ int messages_get_mbox_type(messages_message_h msg, messages_message_box_e * mbox
 
 	return MESSAGES_ERROR_NONE;
 }
+
 
 /* MMS */
 int messages_mms_set_subject(messages_message_h msg, const char *subject)
