@@ -599,7 +599,7 @@ int messages_search_message(messages_service_h service, messages_message_box_e m
 
 	messages_service_s *_svc = (messages_service_s *) service;
 	messages_message_s *_msg = NULL;
-	messages_message_h *_array;
+	messages_message_h *_array = NULL;
 
 	CHECK_NULL(_svc);
 	CHECK_NULL(message_array);
@@ -630,36 +630,39 @@ int messages_search_message(messages_service_h service, messages_message_box_e m
 		msg_release_list_struct(&msg_list);
 		return ERROR_CONVERT(ret);
 	}
+
 	/* Result */
-	_array = (messages_message_h *) calloc(msg_list.nCount + 1, sizeof(messages_message_h));
-	if (NULL == _array) {
-		msg_release_list_struct(&msg_list);
-		LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_array'.", __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
-		return MESSAGES_ERROR_OUT_OF_MEMORY;
-	}
-
-	for (i = 0; i < msg_list.nCount; i++) {
-		_msg = (messages_message_s *) calloc(1, sizeof(messages_message_s));
-		if (NULL == _msg) {
-			LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_msg'.", __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
-			for (; i > 0; i--)
-				free(_array[i - 1]);
-
-			free(_array);
+	if (msg_list.nCount > 0) {
+		_array = (messages_message_h *) calloc(msg_list.nCount, sizeof(messages_message_h));
+		if (NULL == _array) {
 			msg_release_list_struct(&msg_list);
+			LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_array'.", __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
 			return MESSAGES_ERROR_OUT_OF_MEMORY;
 		}
 
-		_msg->text = NULL;
-		_msg->attachment_list = NULL;
-		_msg->msg_h = msg_list.msg_struct_info[i];
+		for (i = 0; i < msg_list.nCount; i++) {
+			_msg = (messages_message_s *) calloc(1, sizeof(messages_message_s));
+			if (NULL == _msg) {
+				LOGE("[%s:%d] OUT_OF_MEMORY(0x%08x) fail to create '_msg'.", __FUNCTION__, __LINE__, MESSAGES_ERROR_OUT_OF_MEMORY);
+				for (; i > 0; i--)
+					free(_array[i - 1]);
 
-		messages_get_message_type((messages_message_h) _msg, &_msgType);
+				free(_array);
+				msg_release_list_struct(&msg_list);
+				return MESSAGES_ERROR_OUT_OF_MEMORY;
+			}
 
-		if (IS_MMS(_msgType))
-			_messages_load_mms_data(_msg, _svc->service_h);
+			_msg->text = NULL;
+			_msg->attachment_list = NULL;
+			_msg->msg_h = msg_list.msg_struct_info[i];
 
-		_array[i] = (messages_message_h) _msg;
+			messages_get_message_type((messages_message_h) _msg, &_msgType);
+
+			if (IS_MMS(_msgType))
+				_messages_load_mms_data(_msg, _svc->service_h);
+
+			_array[i] = (messages_message_h) _msg;
+		}
 	}
 
 	*message_array = (messages_message_h *) _array;
