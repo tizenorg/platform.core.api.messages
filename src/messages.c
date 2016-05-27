@@ -723,9 +723,11 @@ int messages_foreach_message(messages_service_h svc, messages_message_box_e mbox
 			break;
 	}
 
-	ret = messages_free_message_array(msg_array);
-	if (MESSAGES_ERROR_NONE != ret)
-		return ret;
+	if (length > 0) {
+		ret = messages_free_message_array(msg_array);
+		if (MESSAGES_ERROR_NONE != ret)
+			return ret;
+	}
 
 	return MESSAGES_ERROR_NONE;
 }
